@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Bayaw App — PRC Agricultural & Biosystems Engineering Board Exam Reviewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            navy: {
+              950: '#070c1b',
+              900: '#0c1328',
+              850: '#101a35',
+              800: '#162244',
+              700: '#1e2f5c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 18% 0%, #0d2b3a 0%, #071222 50%, #040914 100%);
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(13, 27, 48, 0.92) 0%, rgba(9, 17, 34, 0.95) 100%);
+      border: 1px solid rgba(52, 211, 153, 0.22);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+    }
+    .area-card-1 {
+      background: linear-gradient(135deg, rgba(14, 62, 134, 0.88) 0%, rgba(10, 34, 82, 0.95) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      box-shadow: 0 0 26px rgba(14, 165, 233, 0.16);
+    }
+    .area-card-2 {
+      background: linear-gradient(135deg, rgba(12, 102, 74, 0.88) 0%, rgba(8, 55, 44, 0.95) 100%);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      box-shadow: 0 0 26px rgba(16, 185, 129, 0.18);
+    }
+    .area-card-3 {
+      background: linear-gradient(135deg, rgba(78, 36, 126, 0.88) 0%, rgba(44, 20, 78, 0.95) 100%);
+      border: 1px solid rgba(192, 132, 252, 0.42);
+      box-shadow: 0 0 26px rgba(168, 85, 247, 0.16);
+    }
+    .level-tile {
+      background: rgba(12, 24, 48, 0.92);
+      border: 1px solid rgba(99, 132, 212, 0.28);
+      transition: all 0.2s ease;
+    }
+    .level-tile:hover {
+      border-color: rgba(52, 211, 153, 0.75);
+      transform: translateY(-2px);
+    }
+    .level-tile-active {
+      background: linear-gradient(180deg, rgba(14, 72, 148, 0.96) 0%, rgba(11, 38, 88, 0.96) 100%);
+      border: 1.5px solid #38bdf8;
+      box-shadow: 0 0 22px rgba(56, 189, 248, 0.38);
+    }
+    .study-hero-panel {
+      background: linear-gradient(180deg, rgba(11, 34, 52, 0.96) 0%, rgba(8, 19, 36, 0.98) 100%);
+      border: 2px solid rgba(52, 211, 153, 0.65);
+      box-shadow: 0 0 42px rgba(16, 185, 129, 0.22), inset 0 1px 0 rgba(110, 231, 183, 0.25);
+      border-radius: 18px;
+    }
+    .pvp-panel {
+      background: linear-gradient(180deg, rgba(24, 20, 66, 0.95) 0%, rgba(14, 15, 42, 0.96) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.42);
+      box-shadow: 0 0 32px rgba(124, 58, 237, 0.2);
+    }
+    .btn-find-match {
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #7c3aed 100%);
+      box-shadow: 0 0 22px rgba(139, 92, 246, 0.45);
+    }
+    .btn-find-match:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 0 28px rgba(139, 92, 246, 0.65);
+    }
+    .sidebar-item-active {
+      background: linear-gradient(90deg, #16a34a 0%, #0d9488 100%);
+      color: #ffffff;
+      border: 1px solid rgba(110, 231, 183, 0.45);
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
+    }
+    .nav-home-active {
+      background: linear-gradient(90deg, #15803d 0%, #10b981 100%);
+      border: 1px solid rgba(110, 231, 183, 0.5);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+    }
+    .sidebar-pvp-glow {
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.28) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.55);
+      box-shadow: 0 0 16px rgba(139, 92, 246, 0.22);
+    }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #070c1b; }
+    ::-webkit-scrollbar-thumb { background: #233563; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-100">
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" class="fixed inset-0 z-50 bg-navy-950 flex flex-col items-center justify-center gap-4">
+    <div class="w-12 h-12 border-4 border-sky-500/30 border-t-sky-400 rounded-full animate-spin"></div>
+    <h2 class="text-lg font-bold text-white">Loading Project Bayaw App (4,579 Verified Items)...</h2>
+    <p class="text-xs text-slate-400">Initializing PRC ABELE Areas, 100-Item Levels, Anki SRS & 1v1 PvP Arena</p>
+  </div>
+
+  <!-- CLOUD ACCOUNT AUTH MODAL (SIGN IN / CREATE ACCOUNT + ACCESS CODE) -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 bg-navy-950/95 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="panel max-w-md w-full p-6 sm:p-7 border-2 border-sky-400/50 space-y-5 shadow-2xl">
+      <div class="text-center space-y-1.5">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border border-sky-400/50 flex items-center justify-center text-2xl mx-auto shadow-lg">
+          🔐
+        </div>
+        <div class="inline-block px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-[10px] font-black uppercase tracking-wider text-amber-300">
+          Project Bayaw App • Cloud Sync Accounts
+        </div>
+        <h2 id="auth-modal-title" class="text-xl font-extrabold text-white">Sign In or Create Account</h2>
+        <p class="text-xs text-slate-300">All 4,579 Anki cards, 100-item levels, XP & 1v1 PvP RP save to the cloud across your phone & PC!</p>
+      </div>
+
+      <!-- Mode Switch Tabs -->
+      <div class="grid grid-cols-2 gap-1.5 bg-navy-950 p-1 rounded-xl border border-blue-900/60">
+        <button id="auth-tab-login" onclick="app.switchAuthTab('login')" class="py-2 rounded-lg text-xs font-extrabold bg-blue-600 text-white transition-all">
+          Sign In
+        </button>
+        <button id="auth-tab-register" onclick="app.switchAuthTab('register')" class="py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">
+          Create Account
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Username</label>
+          <input id="auth-username-input" type="text" maxlength="24" placeholder="e.g. EngrJuan or BayawAce" class="w-full bg-navy-950 border border-blue-800/80 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-sky-400" />
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Password</label>
+          <input id="auth-password-input" type="password" onkeydown="if(event.key==='Enter') app.submitAuth()" placeholder="Enter your password..." class="w-full bg-navy-950 border border-blue-800/80 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-sky-400" />
+        </div>
+
+        <div id="auth-promo-banner" class="hidden rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/50 p-3 text-center space-y-0.5">
+          <div class="text-xs font-extrabold text-emerald-300">🎉 Soft Launch Promo — 5 Days FREE Access!</div>
+          <div id="auth-promo-countdown" class="text-[11px] text-emerald-100/90">Create an account without an access code during our first 48 hours!</div>
+        </div>
+
+        <div id="auth-access-code-wrap" class="hidden space-y-1">
+          <label id="auth-access-code-label" class="text-[11px] font-bold uppercase tracking-wider text-amber-300">Owner Access Code (Required for Soft Launch)</label>
+          <input id="auth-access-code-input" type="text" onkeydown="if(event.key==='Enter') app.submitAuth()" placeholder="e.g. BAYAW-7K2M9Q" class="w-full bg-navy-950 border border-amber-500/45 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-white uppercase tracking-wider focus:outline-none focus:border-amber-400" />
+          <p id="auth-access-code-hint" class="text-[10px] text-slate-400">Ask the 👑 Owner for an invite code (Owner can enter master passcode here).</p>
+        </div>
+
+        <div id="auth-error-msg" class="hidden text-xs text-rose-400 font-semibold bg-rose-950/50 border border-rose-500/40 rounded-lg px-3 py-2"></div>
+      </div>
+
+      <button id="auth-submit-btn" onclick="app.submitAuth()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:brightness-110 text-white font-extrabold text-sm shadow-lg shadow-blue-600/30 transition-all">
+        Sign In & Sync Progress
+      </button>
+    </div>
+  </div>
+
+  <!-- USER FEEDBACK / SUGGESTION MODAL -->
+  <div id="feedback-modal" class="hidden fixed inset-0 z-50 bg-navy-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="panel max-w-md w-full p-6 border border-emerald-400/45 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">💡</span>
+          <h2 class="text-base font-extrabold text-white">Send Feedback or Suggestion</h2>
+        </div>
+        <button onclick="app.closeFeedbackModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Found a typo in a question, have a feature idea, or want to suggest a topic? Send it straight to the <strong>👑 Owner</strong>!
+      </p>
+      <div class="space-y-3">
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Category</label>
+          <select id="feedback-category" class="w-full bg-navy-950 border border-emerald-500/35 rounded-xl px-3 py-2 text-xs font-bold text-white">
+            <option value="Feature Suggestion">✨ Feature Suggestion</option>
+            <option value="Question Correction">📝 Question / Answer Correction</option>
+            <option value="Bug Report">🐞 Bug Report</option>
+            <option value="General Feedback">💬 General Feedback</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Your Message</label>
+          <textarea id="feedback-message" rows="4" maxlength="600" placeholder="Write your suggestion, question ID (e.g. #A1-0042), or feedback..." class="w-full bg-navy-950 border border-emerald-500/35 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"></textarea>
+        </div>
+        <div id="feedback-status-msg" class="hidden text-xs font-semibold"></div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button onclick="app.closeFeedbackModal()" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-slate-300">Cancel</button>
+        <button id="btn-submit-feedback" onclick="app.submitFeedback()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-xs font-extrabold text-white shadow-lg">
+          Send to Owner
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER RESET CODE VERIFICATION MODAL -->
+  <div id="reset-code-modal" class="hidden fixed inset-0 z-50 bg-navy-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="panel max-w-md w-full p-6 border border-rose-500/40 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔐</span>
+          <h2 class="text-base font-extrabold text-rose-300">Owner Reset Code Required</h2>
+        </div>
+        <button onclick="app.closeResetModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        To prevent accidental or unfair resets, resetting your local progress requires a one-time <strong>Reset Code</strong> from the <strong>👑 Owner</strong>.
+      </p>
+      <div class="space-y-2">
+        <label class="text-[11px] font-bold uppercase tracking-wider text-rose-300">Enter Owner Reset Code</label>
+        <input id="reset-code-input" type="text" onkeydown="if(event.key==='Enter') app.submitResetCode()" placeholder="e.g. RESET-AB12CD" class="w-full bg-navy-950 border border-rose-500/40 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-white uppercase focus:outline-none focus:border-rose-400" />
+        <div id="reset-code-error" class="hidden text-xs text-rose-400 font-semibold"></div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="app.closeResetModal()" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-slate-300">Cancel</button>
+        <button id="btn-confirm-reset" onclick="app.submitResetCode()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-extrabold text-white shadow-lg">
+          Verify Code & Reset Progress
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 bg-navy-950/90 backdrop-blur-xl border-b border-blue-900/40 px-4 py-2.5">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Logo -->
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="app.showView('dashboard')">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-amber-500/20 border border-emerald-400/40 flex items-center justify-center shadow-lg">
+          <svg class="w-6 h-6 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22v-9m0 0c-3 0-6-2-6-6 3 0 6 2 6 6zm0 0c3 0 6-2 6-6-3 0-6 2-6 6z" stroke="#34d399"/>
+            <circle cx="12" cy="5" r="2.2" stroke="#fbbf24"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-extrabold text-base leading-tight tracking-tight text-white">Project Bayaw App</div>
+          <div class="text-[10px] text-slate-400 leading-tight">PRC Agricultural Engineering<br class="hidden sm:inline"> Board Exam Reviewer</div>
+        </div>
+      </div>
+
+      <!-- Center Nav Links -->
+      <nav class="hidden lg:flex items-center gap-1.5">
+        <button id="topnav-dashboard" onclick="app.showView('dashboard')" class="topnav-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+          <span>🏠</span> Home
+        </button>
+        <button id="topnav-study" onclick="app.scrollToStudySession()" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80">
+          <span>📖</span> Study
+        </button>
+        <button id="topnav-prob" onclick="app.openProblemSolvingMode(1)" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/30">
+          <span>🧮</span> Problem Solving
+        </button>
+        <button id="topnav-pvp" onclick="app.openPvpLobby()" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80">
+          <span>⚔️</span> 1v1 PvP
+        </button>
+        <button id="topnav-leaderboards" onclick="app.showView('leaderboards')" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80">
+          <span>🏆</span> Leaderboards
+        </button>
+        <button id="topnav-vault" onclick="app.showView('vault')" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80">
+          <span>🗄️</span> Question Vault
+        </button>
+        <button id="topnav-progress" onclick="app.showView('progress')" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80">
+          <span>📊</span> Progress
+        </button>
+      </nav>
+
+      <!-- Global Search & Profile -->
+      <div class="flex items-center gap-3">
+        <div class="relative hidden sm:block">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+          <input id="global-search-input" onkeydown="if(event.key==='Enter') app.globalSearch(this.value)" type="text" placeholder="Search 4,579 questions..." class="w-48 xl:w-64 bg-navy-900 border border-blue-900/60 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400" />
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 bg-navy-900 border border-blue-900/60 rounded-xl px-2.5 py-1.5">
+            <div id="header-avatar-initials" class="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-xs font-extrabold text-white">??</div>
+            <div class="text-left hidden md:block">
+              <div class="flex items-center gap-1.5">
+                <span id="header-player-name" class="text-[11px] font-bold text-white leading-tight">Not Signed In</span>
+                <span id="header-owner-tag" class="hidden text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 shadow">👑 OWNER</span>
+              </div>
+              <div class="text-[10px] text-amber-400 font-mono leading-tight"><span id="header-rp">1,200</span> RP • <span id="header-xp">0</span> XP</div>
+            </div>
+          </div>
+          <button onclick="app.logoutAccount()" title="Sign Out" class="px-2.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/40 text-[11px] font-bold text-rose-300 transition-all">
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP LAYOUT: LEFT SIDEBAR + WORKSPACE -->
+  <div class="flex-1 max-w-[1600px] w-full mx-auto flex">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="hidden md:flex flex-col w-56 shrink-0 border-r border-blue-900/35 bg-navy-950/60 p-3.5 space-y-2">
+      <button id="side-dashboard" onclick="app.showView('dashboard')" class="side-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold sidebar-item-active">
+        <span>🏠</span> Dashboard
+      </button>
+
+      <div class="pt-2">
+        <div class="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+          <span>📚 Study Areas</span>
+        </div>
+        <div class="space-y-1 pl-1">
+          <button onclick="app.selectAreaAndShow(1)" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-navy-800/80 hover:text-white transition-all">
+            <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-sky-400"></span> Area 1</span>
+            <span class="text-[10px] text-slate-400 font-mono">(1,222)</span>
+          </button>
+          <button onclick="app.selectAreaAndShow(2)" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-navy-800/80 hover:text-white transition-all">
+            <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span> Area 2</span>
+            <span class="text-[10px] text-slate-400 font-mono">(1,242)</span>
+          </button>
+          <button onclick="app.selectAreaAndShow(3)" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-navy-800/80 hover:text-white transition-all">
+            <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-purple-400"></span> Area 3</span>
+            <span class="text-[10px] text-slate-400 font-mono">(2,115)</span>
+          </button>
+        </div>
+      </div>
+
+      <button onclick="app.scrollToStudySession()" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-navy-800/80 hover:text-white">
+        <span>🗂️</span> Study Modes
+      </button>
+
+      <div class="pt-1">
+        <button id="side-prob-solving" onclick="app.openProblemSolvingMode(1)" class="side-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 transition-all">
+          <span class="flex items-center gap-2"><span>🧮</span> Problem Solving</span>
+          <span class="text-[10px] font-mono text-amber-200">571</span>
+        </button>
+        <div class="space-y-1 pl-2 mt-1">
+          <button onclick="app.openProblemSolvingMode(1)" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] text-slate-300 hover:bg-navy-800/80 hover:text-sky-300 transition-all">
+            <span>• Area 1 Problems</span>
+            <span class="font-mono text-[10px] text-sky-400">215</span>
+          </button>
+          <button onclick="app.openProblemSolvingMode(2)" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] text-slate-300 hover:bg-navy-800/80 hover:text-emerald-300 transition-all">
+            <span>• Area 2 Problems</span>
+            <span class="font-mono text-[10px] text-emerald-400">130</span>
+          </button>
+          <button onclick="app.openProblemSolvingMode(3)" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] text-slate-300 hover:bg-navy-800/80 hover:text-purple-300 transition-all">
+            <span>• Area 3 Problems</span>
+            <span class="font-mono text-[10px] text-purple-400">226</span>
+          </button>
+        </div>
+      </div>
+
+      <button id="side-pvp" onclick="app.openPvpLobby()" class="side-btn w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white sidebar-pvp-glow hover:brightness-110 transition-all">
+        <span>⚔️</span> 1v1 PvP <span class="text-[10px] text-purple-200 font-normal">(Lobby)</span>
+      </button>
+
+      <button id="side-leaderboards" onclick="app.showView('leaderboards')" class="side-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-navy-800/80 hover:text-white">
+        <span>🏆</span> Leaderboards
+      </button>
+
+      <button id="side-vault" onclick="app.showView('vault')" class="side-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-navy-800/80 hover:text-white">
+        <span>🗄️</span>
+        <div class="text-left leading-tight">
+          <div>Question Vault</div>
+          <div class="text-[10px] text-slate-400 font-mono">(4,579 items)</div>
+        </div>
+      </button>
+
+      <button id="side-progress" onclick="app.showView('progress')" class="side-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-navy-800/80 hover:text-white">
+        <span>📊</span> Progress & Stats
+      </button>
+
+      <div class="pt-4 mt-auto border-t border-blue-900/35 space-y-1.5">
+        <button id="side-admin" onclick="app.openAdminPanel()" class="side-btn w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/30">
+          <span>👑</span> Owner Admin
+        </button>
+        <button onclick="app.logoutAccount()" class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-950/50 border border-rose-500/30">
+          <span>🚪</span> Sign Out / Switch Account
+        </button>
+        <button onclick="app.openFeedbackModal()" class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30">
+          <span>💡</span> Feedback / Suggest
+        </button>
+        <button onclick="app.resetProgress()" class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-[11px] font-medium text-rose-400/80 hover:text-rose-300 hover:bg-rose-950/40">
+          <span>↺</span> Reset Local Progress
+        </button>
+
+        <!-- LIVE GLOBAL REVIEWEE CHAT (RIGHT BELOW RESET) -->
+        <div class="pt-2">
+          <div class="rounded-xl bg-navy-900/90 border border-emerald-500/30 p-2.5 flex flex-col space-y-2 shadow-inner">
+            <div class="flex items-center justify-between border-b border-emerald-500/20 pb-1.5">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-[11px] font-extrabold text-emerald-300">💬 Global Chat</span>
+              </div>
+              <button onclick="app.loadGlobalChat()" class="text-[10px] text-slate-400 hover:text-white" title="Refresh chat">↻</button>
+            </div>
+            <div id="global-chat-messages" class="h-44 overflow-y-auto space-y-1.5 pr-1 text-[11px]">
+              <div class="text-slate-500 text-[10px] text-center py-4">Loading live chat...</div>
+            </div>
+            <div class="flex items-center gap-1 pt-1 border-t border-emerald-500/20">
+              <input id="global-chat-input" type="text" maxlength="200" onkeydown="if(event.key==='Enter') app.sendGlobalChat()" placeholder="Say hi to reviewees..." class="flex-1 min-w-0 bg-navy-950 border border-blue-900/70 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-emerald-400" />
+              <button onclick="app.sendGlobalChat()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shrink-0">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT WORKSPACE -->
+    <main class="flex-1 p-3 sm:p-5 pb-24 md:pb-6 overflow-y-auto space-y-4">
+
+      <!-- ==================== VIEW 1: INTEGRATED DASHBOARD (MATCHING MOCKUP) ==================== -->
+      <div id="view-dashboard" class="space-y-4">
+
+        <!-- CRISP NATIVE AGRI-TECH HERO BANNER (ZERO BLUR, PERFECT FIT ON ALL SCREENS) -->
+        <div class="relative rounded-2xl overflow-hidden border border-emerald-400/40 bg-gradient-to-r from-[#071f2e] via-[#0a2f3a] to-[#08382c] px-5 py-4 shadow-xl shadow-emerald-950/40 flex items-center justify-between gap-4">
+          <!-- Subtle glowing backdrop orbs -->
+          <div class="absolute -left-10 -top-12 w-48 h-48 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute right-10 -bottom-16 w-64 h-48 bg-teal-400/20 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="flex items-center gap-3.5 z-10">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/25 to-teal-500/20 border border-emerald-400/50 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+              <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#34d399" stroke-width="1.6" stroke-dasharray="3 2"/>
+                <path d="M12 18V10M12 10C9.5 10 7.5 8.2 7.5 5.8C10 5.8 12 7.6 12 10ZM12 11.5C14.5 11.5 16.5 9.7 16.5 7.3C14 7.3 12 9.1 12 11.5Z" stroke="#6ee7b7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-lg sm:text-2xl font-extrabold text-white tracking-tight leading-tight">PRC Agricultural Engineering Board Exam Reviewer</h1>
+              <p class="text-xs sm:text-sm text-emerald-200/85 mt-0.5">Study • Recall with Anki SRS • Practice Board MCQs • Compete in 1v1 Anki Race</p>
+            </div>
+          </div>
+
+          <!-- Crisp Vector Agri-Tech Landscape (Tractor, Pivot Irrigation, Greenhouse & Silos) -->
+          <div class="hidden lg:flex items-end z-10 pointer-events-none shrink-0">
+            <svg class="w-72 h-16" viewBox="0 0 320 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Rolling emerald hills -->
+              <path d="M0 68 Q65 42 145 56 T320 48 L320 72 L0 72 Z" fill="url(#hillGrad)" opacity="0.55"/>
+              <path d="M20 72 Q120 50 220 62 T320 58 L320 72 Z" fill="#10b981" opacity="0.35"/>
+              <!-- Tractor silhouette -->
+              <g stroke="#6ee7b7" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="38" y="34" width="22" height="14" rx="2" fill="rgba(16,185,129,0.2)"/>
+                <path d="M60 39 H78 L81 48 H60 Z" fill="rgba(16,185,129,0.25)"/>
+                <line x1="74" y1="39" x2="74" y2="30"/>
+                <circle cx="46" cy="52" r="9" fill="#062925"/>
+                <circle cx="46" cy="52" r="3.5"/>
+                <circle cx="75" cy="55" r="6" fill="#062925"/>
+              </g>
+              <!-- Center-Pivot Irrigation Truss & Sprays -->
+              <g stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round">
+                <path d="M108 54 L132 34 L178 34 L198 54" fill="none"/>
+                <line x1="132" y1="34" x2="146" y2="48"/>
+                <line x1="155" y1="34" x2="155" y2="52"/>
+                <line x1="178" y1="34" x2="165" y2="48"/>
+                <path d="M126 42 L120 55 M126 42 L132 55 M155 42 L149 55 M155 42 L161 55 M182 42 L176 55 M182 42 L188 55" stroke="#7dd3fc" stroke-width="1" opacity="0.7"/>
+              </g>
+              <!-- Greenhouse & Grain Silos -->
+              <g stroke="#6ee7b7" stroke-width="1.5" stroke-linejoin="round">
+                <path d="M212 56 V36 L232 24 L252 36 V56 Z" fill="rgba(52,211,153,0.16)"/>
+                <line x1="232" y1="24" x2="232" y2="56"/>
+                <line x1="212" y1="42" x2="252" y2="42"/>
+                <rect x="262" y="24" width="20" height="32" rx="2" fill="rgba(56,189,248,0.15)"/>
+                <path d="M262 24 Q272 13 282 24"/>
+                <rect x="286" y="30" width="16" height="26" rx="2" fill="rgba(56,189,248,0.15)"/>
+                <path d="M286 30 Q294 21 302 30"/>
+              </g>
+              <defs>
+                <linearGradient id="hillGrad" x1="0" y1="45" x2="320" y2="72" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#059669"/>
+                  <stop offset="1" stop-color="#0284c7"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ROW 1: 3 OFFICIAL PRC BOARD EXAM AREAS (LEFT 8 COLS) + MY PROGRESS (RIGHT 4 COLS) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+
+          <!-- 3 Official PRC Board Exam Areas -->
+          <div class="xl:col-span-9 panel p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sky-400 text-sm">🎯</span>
+                <h2 class="text-sm font-extrabold text-white">3 Official PRC Board Exam Areas</h2>
+              </div>
+              <span class="text-[11px] text-slate-400">Click an Area to filter 100-item levels below</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <!-- Area 1 Card -->
+              <div id="dash-area-card-1" onclick="app.filterLevelsByArea(1)" class="area-card-1 rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.01] relative overflow-hidden">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-sky-400/20 border border-sky-400/40 flex items-center justify-center text-lg">⚙️</div>
+                    <div>
+                      <div class="font-extrabold text-base text-white leading-tight">Area 1</div>
+                      <div class="text-[11px] text-sky-200/90 leading-tight">Power, Energy & Machinery</div>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full bg-sky-500/30 border border-sky-400/50 text-[11px] font-extrabold text-sky-200">32%</span>
+                </div>
+                <div class="mt-3 text-xs font-bold text-white">1,222 items <span class="text-sky-300/60 mx-1">|</span> 11 Levels + (PS)</div>
+                <div class="mt-2 space-y-1 text-[11px] text-sky-100/80">
+                  <div>📖 Level 1 – 11: 1,007 Concepts</div>
+                  <div>🧮 Area-1 Level (PS): 215 Problems</div>
+                </div>
+              </div>
+
+              <!-- Area 2 Card -->
+              <div id="dash-area-card-2" onclick="app.filterLevelsByArea(2)" class="area-card-2 rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.01] relative overflow-hidden">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-400/20 border border-emerald-400/40 flex items-center justify-center text-lg">💧</div>
+                    <div>
+                      <div class="font-extrabold text-base text-white leading-tight">Area 2</div>
+                      <div class="text-[11px] text-emerald-200/90 leading-tight">Land & Water Resources</div>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-[11px] font-extrabold text-emerald-200">32%</span>
+                </div>
+                <div class="mt-3 text-xs font-bold text-white">1,242 items <span class="text-emerald-300/60 mx-1">|</span> 12 Levels + (PS)</div>
+                <div class="mt-2 space-y-1 text-[11px] text-emerald-100/80">
+                  <div>📖 Level 1 – 12: 1,112 Concepts</div>
+                  <div>🧮 Area-2 Level (PS): 130 Problems</div>
+                </div>
+              </div>
+
+              <!-- Area 3 Card -->
+              <div id="dash-area-card-3" onclick="app.filterLevelsByArea(3)" class="area-card-3 rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.01] relative overflow-hidden">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-purple-400/20 border border-purple-400/40 flex items-center justify-center text-lg">🌿</div>
+                    <div>
+                      <div class="font-extrabold text-base text-white leading-tight">Area 3</div>
+                      <div class="text-[11px] text-purple-200/90 leading-tight">AB Structures, Env. & Bioprocess</div>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full bg-purple-500/30 border border-purple-400/50 text-[11px] font-extrabold text-purple-200">36%</span>
+                </div>
+                <div class="mt-3 text-xs font-bold text-white">2,115 items <span class="text-purple-300/60 mx-1">|</span> 19 Levels + (PS)</div>
+                <div class="mt-2 space-y-1 text-[11px] text-purple-100/80">
+                  <div>📖 Level 1 – 19: 1,889 Concepts</div>
+                  <div>🧮 Area-3 Level (PS): 226 Problems</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Progress Widget -->
+          <div class="xl:col-span-3 panel p-4 flex flex-col justify-between space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="text-sky-400 text-sm">📊</span>
+              <h2 class="text-sm font-extrabold text-white">My Progress</h2>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <!-- Area 1 Bar -->
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="font-bold text-sky-300">Area 1 (32%) <span id="prog-a1-lvl" class="text-slate-400 font-normal ml-1">Lv 0 / 13</span></span>
+                  <span id="prog-a1-txt" class="font-mono text-slate-300">0 / 1,222 (0%)</span>
+                </div>
+                <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
+                  <div id="prog-a1-bar" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <!-- Area 2 Bar -->
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="font-bold text-emerald-300">Area 2 (32%) <span id="prog-a2-lvl" class="text-slate-400 font-normal ml-1">Lv 0 / 13</span></span>
+                  <span id="prog-a2-txt" class="font-mono text-slate-300">0 / 1,242 (0%)</span>
+                </div>
+                <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
+                  <div id="prog-a2-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-300 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <!-- Area 3 Bar -->
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="font-bold text-purple-300">Area 3 (36%) <span id="prog-a3-lvl" class="text-slate-400 font-normal ml-1">Lv 0 / 22</span></span>
+                  <span id="prog-a3-txt" class="font-mono text-slate-300">0 / 2,115 (0%)</span>
+                </div>
+                <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
+                  <div id="prog-a3-bar" class="h-full bg-gradient-to-r from-purple-500 to-fuchsia-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Overall Progress -->
+            <div class="pt-2 border-t border-blue-900/40">
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-bold text-white">Overall Progress</span>
+                <span id="prog-overall-txt" class="font-mono font-bold text-emerald-400">0 / 4,579 (0.0%)</span>
+              </div>
+              <div class="w-full h-2.5 bg-navy-950 rounded-full overflow-hidden">
+                <div id="prog-overall-bar" class="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-indigo-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROW 2: FULL-WIDTH COMPACT 100-ITEM LEVEL SELECTOR STRIP -->
+        <div class="panel px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-3">
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <span class="text-sky-400 text-sm">🗂️</span>
+            <h2 class="text-xs sm:text-sm font-extrabold text-white whitespace-nowrap">Choose a 100-Item Level to Study</h2>
+            <div class="flex items-center gap-1 text-[11px] ml-1">
+              <span class="text-slate-400">Area:</span>
+              <button id="lvl-filter-all" onclick="app.filterLevelsByArea(0)" class="lvl-filter-btn px-2.5 py-1 rounded-md font-bold bg-blue-600 text-white">All</button>
+              <button id="lvl-filter-1" onclick="app.filterLevelsByArea(1)" class="lvl-filter-btn px-2.5 py-1 rounded-md font-semibold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50">Area 1</button>
+              <button id="lvl-filter-2" onclick="app.filterLevelsByArea(2)" class="lvl-filter-btn px-2.5 py-1 rounded-md font-semibold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50">Area 2</button>
+              <button id="lvl-filter-3" onclick="app.filterLevelsByArea(3)" class="lvl-filter-btn px-2.5 py-1 rounded-md font-semibold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50">Area 3</button>
+            </div>
+          </div>
+
+          <!-- Horizontal Scrollable 100-Item Level Tiles -->
+          <div id="dashboard-level-tiles" class="flex-1 flex gap-2 overflow-x-auto pb-1">
+            <!-- Populated dynamically: Area 1 - Level 1 (1 - 100), ..., Area-1 Level (PS) -->
+          </div>
+        </div>
+
+        <!-- ROW 3 MAIN HERO STAGE: BIG GLOWING STUDY SESSION (9 COLS) + RIGHT SIDEBAR (STUDY MODE + LEADERBOARDS: 3 COLS) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+
+          <!-- BIG CENTERPIECE: INLINE STUDY SESSION (9 OF 12 COLS — HUGE & CLEAN!) -->
+          <div id="study-session-panel" class="xl:col-span-9 study-hero-panel p-5 sm:p-6 flex flex-col justify-between space-y-5">
+            <!-- Study Session Header -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/25 pb-3.5">
+              <div class="flex items-center gap-2.5">
+                <span class="text-sky-400 text-xl">🎯</span>
+                <h2 id="study-header-title" class="text-base sm:text-xl font-extrabold text-white tracking-tight">Study Session — Area 1 • Level 1 (1 – 100)</h2>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button id="btn-toggle-prob-only" onclick="app.toggleProblemSolvingOnly()" class="px-2.5 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/30 border border-amber-400/50 text-[10px] font-extrabold text-amber-300 transition-all">
+                  🧮 Problem Solving Only (Area 1–3)
+                </button>
+                <span id="study-mode-pill" class="px-2.5 py-1 rounded-full bg-navy-900 border border-blue-800/60 text-[10px] font-bold text-slate-200">Board MCQ + Anki SRS</span>
+                <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] font-bold text-emerald-300">Anki SRS (Spaced Repetition)</span>
+              </div>
+            </div>
+
+            <!-- Problem Solving Only Area Filter Strip (Visible when Problem Solving Only mode is active) -->
+            <div id="prob-solving-strip" class="hidden flex flex-wrap items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/35 rounded-xl px-3.5 py-2">
+              <div class="flex items-center gap-2 text-xs font-extrabold text-amber-300">
+                <span>🧮 Problem Solving Only Mode</span>
+                <span class="text-[10px] font-normal text-amber-200/80">(Step-by-step math & solutions)</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button id="prob-area-btn-1" onclick="app.openProblemSolvingMode(1)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-sky-600 text-white">Area 1 (215)</button>
+                <button id="prob-area-btn-2" onclick="app.openProblemSolvingMode(2)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-navy-900 text-slate-300 border border-blue-900/50">Area 2 (130)</button>
+                <button id="prob-area-btn-3" onclick="app.openProblemSolvingMode(3)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-navy-900 text-slate-300 border border-blue-900/50">Area 3 (226)</button>
+                <button onclick="app.exitProblemSolvingMode()" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-navy-950 hover:bg-navy-800 text-slate-300 border border-slate-700">✕ Back to 100-Item Levels</button>
+              </div>
+            </div>
+
+            <!-- Study Card Body (Spacious Question & Choices Left + Anki SRS Rate Your Recall Right) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+              <!-- Question & Choices (8 cols) -->
+              <div class="lg:col-span-8 space-y-4">
+                <div class="flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-2.5">
+                    <span id="study-q-num" class="text-base font-extrabold text-white">Q. 1 / 100</span>
+                    <span id="study-area-pill" class="px-2.5 py-0.5 rounded-md bg-blue-600/35 border border-blue-400/50 text-xs font-bold text-sky-200">Area 1</span>
+                    <span id="study-id-pill" class="font-mono text-xs text-slate-400 bg-navy-950/70 px-2 py-0.5 rounded border border-blue-900/40">#A1-0001</span>
+                  </div>
+                </div>
+
+                <div id="study-question-text" class="text-base sm:text-lg font-bold text-white leading-relaxed whitespace-pre-line">
+                  Loading question...
+                </div>
+
+                <!-- Embedded Diagrams (Blurred until revealed) -->
+                <div id="study-images-container" class="hidden flex flex-wrap gap-3 pt-1"></div>
+
+                <!-- Choices A-D (Larger, cleaner board-exam buttons) -->
+                <div id="study-mcq-choices" class="space-y-2.5 pt-1"></div>
+
+                <!-- Classic Flip Show Answer Button -->
+                <div id="study-flip-btn-wrap" class="hidden pt-2">
+                  <button onclick="app.revealStudyAnswer()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm shadow-lg shadow-blue-600/30">
+                    Show Answer
+                  </button>
+                </div>
+
+                <!-- Verified Answer & Rationale Box -->
+                <div id="study-answer-box" class="hidden p-4 rounded-xl bg-emerald-950/60 border border-emerald-400/45 space-y-1.5">
+                  <div class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">Verified Answer & Rationale</div>
+                  <div id="study-answer-text" class="text-sm sm:text-base font-extrabold text-white"></div>
+                  <div id="study-rationale-text" class="text-xs text-slate-200 whitespace-pre-line leading-relaxed"></div>
+                </div>
+              </div>
+
+              <!-- Right Column: Anki SRS Rate Your Recall + Level Progress (4 cols) -->
+              <div class="lg:col-span-4 bg-navy-950/80 border border-sky-500/25 rounded-2xl p-4 flex flex-col justify-between space-y-4">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between text-xs text-slate-300 border-b border-blue-900/40 pb-2">
+                    <span>📅 Next review:</span>
+                    <span id="study-next-review" class="font-mono font-bold text-sky-300">New card</span>
+                  </div>
+                  <div class="text-center text-xs font-extrabold text-white">Anki SRS — Rate Your Recall</div>
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <button onclick="app.rateCard('again')" class="py-2.5 px-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white flex flex-col items-center transition-all shadow-md shadow-rose-900/50">
+                      <span class="text-sm font-black">1</span>
+                      <span class="text-[10px] font-bold">Again</span>
+                      <span class="text-[9px] opacity-80 font-mono">1m</span>
+                    </button>
+                    <button onclick="app.rateCard('hard')" class="py-2.5 px-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white flex flex-col items-center transition-all shadow-md shadow-amber-900/50">
+                      <span class="text-sm font-black">2</span>
+                      <span class="text-[10px] font-bold">Hard</span>
+                      <span class="text-[9px] opacity-80 font-mono">10m</span>
+                    </button>
+                    <button onclick="app.rateCard('good')" class="py-2.5 px-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex flex-col items-center transition-all shadow-md shadow-blue-900/50">
+                      <span class="text-sm font-black">3</span>
+                      <span class="text-[10px] font-bold">Good</span>
+                      <span class="text-[9px] opacity-80 font-mono">3d</span>
+                    </button>
+                    <button onclick="app.rateCard('easy')" class="py-2.5 px-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex flex-col items-center transition-all shadow-md shadow-emerald-900/50">
+                      <span class="text-sm font-black">4</span>
+                      <span class="text-[10px] font-bold">Easy</span>
+                      <span class="text-[9px] opacity-80 font-mono">7d</span>
+                    </button>
+                  </div>
+                  <div class="text-center text-[10px] text-slate-400 leading-relaxed">
+                    Select an answer to reveal, then press <kbd class="px-1.5 py-0.5 rounded bg-navy-900 border border-slate-700 text-sky-300 font-mono">1 – 4</kbd> to rate recall
+                  </div>
+                </div>
+
+                <!-- Mini Progress Bars inside Study Card -->
+                <div class="space-y-3 pt-3 border-t border-blue-900/40 text-xs">
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span id="study-mini-lvl-label" class="font-bold text-slate-200">Level 1 Progress</span>
+                      <span id="study-mini-lvl-txt" class="font-mono text-sky-300 font-bold">0 / 100 (0%)</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-navy-900 rounded-full overflow-hidden">
+                      <div id="study-mini-lvl-bar" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="font-bold text-slate-200">Overall Progress</span>
+                      <span id="study-mini-all-txt" class="font-mono text-emerald-400 font-bold">0 / 4,579 (0%)</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-navy-900 rounded-full overflow-hidden">
+                      <div id="study-mini-all-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-300 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 100-ITEM LEVEL MINIMAP (WIDE 20-COLUMN GRID AT BOTTOM OF HERO TEST PANEL) -->
+            <div class="pt-3.5 border-t border-sky-500/20 space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span id="minimap-title" class="font-bold text-slate-200">🗺️ 100-Item Level Minimap (Level 1: 1 – 100)</span>
+                <div class="flex flex-wrap items-center gap-2.5 text-[11px]">
+                  <span class="flex items-center gap-1 text-rose-400"><span class="w-2.5 h-2.5 rounded-sm bg-rose-600 inline-block"></span> Again (<span id="map-cnt-again">0</span>)</span>
+                  <span class="flex items-center gap-1 text-amber-400"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block"></span> Hard (<span id="map-cnt-hard">0</span>)</span>
+                  <span class="flex items-center gap-1 text-blue-400"><span class="w-2.5 h-2.5 rounded-sm bg-blue-600 inline-block"></span> Good (<span id="map-cnt-good">0</span>)</span>
+                  <span class="flex items-center gap-1 text-emerald-400"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span> Easy (<span id="map-cnt-easy">0</span>)</span>
+                  <span class="flex items-center gap-1 text-slate-400"><span class="w-2.5 h-2.5 rounded-sm bg-navy-800 border border-blue-900 inline-block"></span> Unseen (<span id="map-cnt-new">100</span>)</span>
+                </div>
+              </div>
+              <div id="study-item-minimap" class="grid grid-cols-10 sm:grid-cols-20 gap-1.5 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN (3 COLS): STUDY MODE + DUAL LIVE LEADERBOARDS -->
+          <div class="xl:col-span-3 flex flex-col gap-4">
+            <!-- Study Mode Card -->
+            <div class="panel p-4 space-y-2.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sky-400 text-sm">📖</span>
+                <h2 class="text-xs font-extrabold text-white">Study Mode</h2>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button id="mode-btn-mcq" onclick="app.setStudyStyle('mcq')" class="p-2.5 rounded-xl text-left border-2 border-emerald-400 bg-emerald-500/15 transition-all">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs">📝</span>
+                    <span id="mode-check-mcq" class="text-[9px] w-3.5 h-3.5 rounded-full bg-emerald-500 text-navy-950 font-black flex items-center justify-center">✓</span>
+                  </div>
+                  <div class="text-[11px] font-extrabold text-white mt-1 leading-tight">Board MCQ + Anki SRS</div>
+                </button>
+                <button id="mode-btn-flip" onclick="app.setStudyStyle('flip')" class="p-2.5 rounded-xl text-left border border-blue-900/60 bg-navy-900/80 hover:border-sky-400/60 transition-all">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs">🃏</span>
+                    <span id="mode-check-flip" class="hidden text-[9px] w-3.5 h-3.5 rounded-full bg-emerald-500 text-navy-950 font-black flex items-center justify-center">✓</span>
+                  </div>
+                  <div class="text-[11px] font-bold text-slate-300 mt-1 leading-tight">Classic Anki Flip</div>
+                </button>
+              </div>
+              <div class="text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1 pt-0.5">
+                <span>Answer reveals on choice</span>
+                <span><kbd class="px-1 rounded bg-navy-950 border border-slate-700 text-sky-300 font-mono">1–4</kbd> Rate Recall</span>
+              </div>
+            </div>
+
+            <!-- Dual Live Leaderboards -->
+            <div class="panel p-4 flex-1 space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-amber-400">🏆</span>
+                  <h2 class="text-sm font-extrabold text-white">Live Leaderboards</h2>
+                </div>
+                <span id="lb-real-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">Real Reviewees Only</span>
+              </div>
+
+              <!-- Tabs -->
+              <div class="grid grid-cols-2 gap-1 bg-navy-950 p-1 rounded-xl border border-blue-900/50">
+                <button id="side-lb-tab-prog" onclick="app.highlightSideLb('prog')" class="py-1.5 rounded-lg text-[11px] font-bold bg-indigo-600 text-white">Progression</button>
+                <button id="side-lb-tab-pvp" onclick="app.highlightSideLb('pvp')" class="py-1.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-white">1v1 PvP Rank</button>
+              </div>
+
+              <!-- Progression Leaderboard Compact -->
+              <div id="side-lb-prog-box" class="space-y-2">
+                <div>
+                  <div class="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">📈 Progression Leaderboard</div>
+                  <div class="text-[10px] text-slate-400">Ranked by Area mastery levels & XP</div>
+                </div>
+                <table class="w-full text-[11px]">
+                  <thead>
+                    <tr class="text-slate-400 border-b border-blue-900/40">
+                      <th class="py-1 text-left">#</th>
+                      <th class="py-1 text-left">User</th>
+                      <th class="py-1 text-center">A1</th>
+                      <th class="py-1 text-center">A2</th>
+                      <th class="py-1 text-center">A3</th>
+                      <th class="py-1 text-right">XP</th>
+                    </tr>
+                  </thead>
+                  <tbody id="side-lb-prog-body" class="divide-y divide-blue-900/25"></tbody>
+                </table>
+              </div>
+
+              <!-- 1v1 PvP Rank Leaderboard Compact -->
+              <div id="side-lb-pvp-box" class="space-y-2 pt-3 border-t border-blue-900/40">
+                <div>
+                  <div class="text-xs font-extrabold text-purple-300 flex items-center gap-1.5">⚔️ 1v1 PvP Wins Leaderboard</div>
+                  <div class="text-[10px] text-slate-400">Ranked by Total Wins (W / L) & RP</div>
+                </div>
+                <table class="w-full text-[11px]">
+                  <thead>
+                    <tr class="text-slate-400 border-b border-blue-900/40">
+                      <th class="py-1 text-left">#</th>
+                      <th class="py-1 text-left">User</th>
+                      <th class="py-1 text-center">W - L</th>
+                      <th class="py-1 text-right">RP</th>
+                      <th class="py-1 text-right">Best</th>
+                    </tr>
+                  </thead>
+                  <tbody id="side-lb-pvp-body" class="divide-y divide-blue-900/25"></tbody>
+                </table>
+              </div>
+
+              <button onclick="app.showView('leaderboards')" class="w-full py-2 rounded-xl bg-navy-900 hover:bg-navy-800 border border-blue-900/50 text-[11px] font-bold text-sky-300 transition-all">
+                View Full National Leaderboards →
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 2A: DEDICATED 1v1 PvP LOBBY (NO AUTO-MATCH!) ==================== -->
+      <div id="view-pvp-lobby" class="hidden max-w-5xl mx-auto space-y-5">
+        <div class="pvp-panel rounded-2xl p-6 sm:p-8 space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/25 pb-4">
+            <div class="space-y-1">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-600/30 border border-purple-400/50 text-purple-200 text-xs font-extrabold">
+                <span>⚔️ 1v1 PvP SAME-DECK ANKI RACE LOBBY</span>
+              </div>
+              <h1 class="text-2xl font-extrabold text-white">Configure Your 1v1 Duel & Click Find Match</h1>
+              <p class="text-xs text-slate-300">Matchmaking will <strong>only</strong> start when you click the <strong>Find Match</strong> button below.</p>
+            </div>
+            <button onclick="app.showView('dashboard')" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 border border-blue-900/50 text-xs font-bold text-slate-200">← Back to Dashboard</button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <!-- Left: VS Showcase & Rules -->
+            <div class="lg:col-span-5 bg-navy-950/70 border border-purple-500/25 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-center gap-5 py-2">
+                <div class="text-center">
+                  <div class="w-16 h-16 rounded-full bg-sky-500/20 border-2 border-sky-400 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-sky-500/25">👤</div>
+                  <div class="text-xs font-bold text-sky-300 mt-2">You</div>
+                </div>
+                <div class="text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-amber-300 to-orange-500">VS</div>
+                <div class="text-center">
+                  <div class="w-16 h-16 rounded-full bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-purple-500/25">🎓</div>
+                  <div class="text-xs font-bold text-purple-300 mt-2">Opponent</div>
+                </div>
+              </div>
+              <div class="space-y-2 text-xs text-slate-300">
+                <div>📘 <strong class="text-white">Same Deck:</strong> Both players race through the exact same shuffled cards.</div>
+                <div>⏱️ <strong class="text-white">Anki Penalty:</strong> Wrong answer sends the card to the bottom + <span class="text-rose-400 font-bold">1.8s cooldown</span>.</div>
+                <div>🏆 <strong class="text-white">Rank Points:</strong> First to 0 cards left wins <strong class="text-amber-300">+RP</strong> on the real PvP leaderboard!</div>
+              </div>
+            </div>
+
+            <!-- Right: Match Settings & Find Match Button -->
+            <div class="lg:col-span-7 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">1. Choose Area</label>
+                  <select id="lobby-pvp-area" onchange="app.populateLobbyLevels()" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
+                    <option value="1">Area 1: Power, Energy & Machinery</option>
+                    <option value="2">Area 2: Land & Water Resources</option>
+                    <option value="3">Area 3: Structures, Env. & Bioprocess</option>
+                  </select>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">2. Choose 100-Item Level</label>
+                  <select id="lobby-pvp-level" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-sky-300">
+                    <option value="1">Level 1 (1 – 100)</option>
+                  </select>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">3. Deck Size</label>
+                  <select id="quick-pvp-size" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
+                    <option value="10">10-Card Blitz (~1 min)</option>
+                    <option value="20">20-Card Standard (~2 min)</option>
+                    <option value="50">50-Card Marathon (~5 min)</option>
+                  </select>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">4. Opponent Pace</label>
+                  <select id="quick-pvp-rival" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
+                    <option value="auto">Auto Ranked Rival</option>
+                    <option value="cadet">Cadet Pace (1,050 RP)</option>
+                    <option value="registered">Board Pace (1,380 RP)</option>
+                    <option value="topnotcher">Topnotcher (1,750 RP)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button onclick="app.startPvpMatch()" class="w-full py-4 rounded-xl btn-find-match text-white font-extrabold text-base flex items-center justify-center gap-2 transition-all">
+                <span>🔍</span> Find Match <span class="text-xs font-normal opacity-90">(Start 1v1 Same-Deck Race)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 2: FULL 1v1 PvP LIVE ARENA ==================== -->
+      <div id="view-pvp-arena" class="hidden max-w-4xl mx-auto space-y-4">
+        <div class="pvp-panel rounded-2xl p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full bg-purple-600/30 text-purple-300 border border-purple-400/50 text-xs font-extrabold">⚔️ LIVE 1v1 SAME-DECK ANKI RACE</span>
+              <span id="pvp-arena-deck-label" class="text-xs text-slate-300 font-semibold">Area 1 • Level 1</span>
+              <span id="pvp-arena-seed-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-navy-950 text-sky-300 border border-blue-900/50">Seed: BAYAW-1</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span id="pvp-timer" class="font-mono text-lg font-extrabold text-amber-400">00:00.0</span>
+              <button onclick="app.forfeitPvpMatch()" class="px-3 py-1 rounded-lg bg-navy-900 hover:bg-rose-950 text-xs font-bold text-slate-300 hover:text-rose-300 border border-slate-700">Exit Match</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-navy-950/80 border border-sky-500/40 rounded-xl p-3.5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span id="pvp-you-name" class="text-xs font-extrabold text-sky-300">YOU (Engr. Bayaw)</span>
+                <span id="pvp-you-remaining" class="text-xs font-mono font-extrabold text-emerald-400">10 cards left</span>
+              </div>
+              <div class="w-full h-3 bg-navy-900 rounded-full overflow-hidden">
+                <div id="pvp-you-bar" class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] text-slate-400">
+                <span>Cleared: <strong id="pvp-you-cleared" class="text-white">0</strong></span>
+                <span>Combo: <strong id="pvp-you-combo" class="text-amber-400">0x</strong></span>
+                <span>Lapses: <strong id="pvp-you-lapses" class="text-rose-400">0</strong></span>
+              </div>
+            </div>
+
+            <div class="bg-navy-950/80 border border-purple-500/40 rounded-xl p-3.5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span id="pvp-opp-name" class="text-xs font-extrabold text-purple-300">Opponent</span>
+                <span id="pvp-opp-remaining" class="text-xs font-mono font-extrabold text-rose-400">10 cards left</span>
+              </div>
+              <div class="w-full h-3 bg-navy-900 rounded-full overflow-hidden">
+                <div id="pvp-opp-bar" class="h-full bg-gradient-to-r from-purple-500 to-rose-400 transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] text-slate-400">
+                <span>Cleared: <strong id="pvp-opp-cleared" class="text-white">0</strong></span>
+                <span id="pvp-opp-status" class="text-purple-300">Thinking...</span>
+                <span>Lapses: <strong id="pvp-opp-lapses" class="text-rose-400">0</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active PvP Card -->
+        <div id="pvp-card-container" class="panel p-6 space-y-5 relative">
+          <div id="pvp-penalty-overlay" class="hidden absolute inset-0 z-20 bg-rose-950/92 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center space-y-3">
+            <div class="text-rose-400 font-extrabold text-xl">❌ LAPSED! Card Cycled to Bottom of Deck</div>
+            <div class="p-3 rounded-xl bg-navy-950 border border-rose-500/40 max-w-lg w-full">
+              <div class="text-[10px] uppercase text-slate-400 font-bold">Correct Answer:</div>
+              <div id="pvp-penalty-correct" class="text-sm font-extrabold text-emerald-400 mt-1"></div>
+            </div>
+            <div class="text-xs font-mono text-amber-300">Cooldown: <span id="pvp-penalty-countdown">1.8</span>s...</div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span id="pvp-q-subtopic" class="font-semibold text-sky-400">1.1 Power Engineering</span>
+            <span id="pvp-q-id" class="font-mono">#A1-0001</span>
+          </div>
+          <div id="pvp-q-text" class="text-base sm:text-lg font-bold text-white leading-relaxed"></div>
+          <div id="pvp-q-images" class="hidden flex flex-wrap gap-3"></div>
+          <div id="pvp-q-choices" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2"></div>
+        </div>
+
+        <!-- Post Match Result -->
+        <div id="pvp-result-box" class="hidden panel p-8 border border-amber-500/40 text-center space-y-5">
+          <div id="pvp-result-badge" class="inline-block px-4 py-1 rounded-full text-xs font-extrabold uppercase bg-emerald-500/20 text-emerald-400"></div>
+          <h2 id="pvp-result-title" class="text-2xl sm:text-3xl font-extrabold text-white"></h2>
+          <p id="pvp-result-subtitle" class="text-sm text-slate-300"></p>
+          <div class="grid grid-cols-3 gap-4 max-w-lg mx-auto">
+            <div class="bg-navy-950 p-3 rounded-xl border border-blue-900/50">
+              <div id="pvp-res-rp-delta" class="text-xl font-extrabold font-mono"></div>
+              <div class="text-[11px] text-slate-400">Rank Points</div>
+            </div>
+            <div class="bg-navy-950 p-3 rounded-xl border border-blue-900/50">
+              <div id="pvp-res-time" class="text-xl font-extrabold text-amber-400 font-mono"></div>
+              <div class="text-[11px] text-slate-400">Clear Time</div>
+            </div>
+            <div class="bg-navy-950 p-3 rounded-xl border border-blue-900/50">
+              <div id="pvp-res-accuracy" class="text-xl font-extrabold text-sky-400 font-mono"></div>
+              <div class="text-[11px] text-slate-400">Accuracy</div>
+            </div>
+          </div>
+          <div class="flex justify-center gap-3 pt-2">
+            <button onclick="app.startPvpMatch()" class="px-6 py-2.5 rounded-xl btn-find-match text-white font-extrabold text-xs">⚔️ Rematch</button>
+            <button onclick="app.showView('dashboard')" class="px-6 py-2.5 rounded-xl bg-navy-800 hover:bg-navy-700 text-white font-bold text-xs">← Back to Dashboard</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 3: FULL LEADERBOARDS ==================== -->
+      <div id="view-leaderboards" class="hidden space-y-4">
+        <div class="panel p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 class="text-xl font-extrabold text-white">🏆 National ABELE Reviewer Leaderboards</h1>
+            <p class="text-xs text-slate-400">Compare Area 1–3 Level Progression and 1v1 Same-Deck PvP Rank Points.</p>
+          </div>
+          <button onclick="app.showView('dashboard')" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-white">← Back to Dashboard</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="panel p-5 space-y-3">
+            <h2 class="text-sm font-extrabold text-emerald-400">📈 Progression Leaderboard (Levels Mastered & XP)</h2>
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-slate-400 border-b border-blue-900/50">
+                  <th class="py-2 text-left">#</th>
+                  <th class="py-2 text-left">User</th>
+                  <th class="py-2 text-center">Area 1</th>
+                  <th class="py-2 text-center">Area 2</th>
+                  <th class="py-2 text-center">Area 3</th>
+                  <th class="py-2 text-right">Total XP</th>
+                </tr>
+              </thead>
+              <tbody id="full-lb-prog-body" class="divide-y divide-blue-900/30"></tbody>
+            </table>
+          </div>
+
+          <div class="panel p-5 space-y-3">
+            <h2 class="text-sm font-extrabold text-purple-300">⚔️ 1v1 PvP Wins Leaderboard (Win / Loss & Best Time)</h2>
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-slate-400 border-b border-blue-900/50">
+                  <th class="py-2 text-left">#</th>
+                  <th class="py-2 text-left">Duelist</th>
+                  <th class="py-2 text-center">Wins - Losses</th>
+                  <th class="py-2 text-right">Rank Points</th>
+                  <th class="py-2 text-right">Best Time</th>
+                </tr>
+              </thead>
+              <tbody id="full-lb-pvp-body" class="divide-y divide-blue-900/30"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 4: QUESTION VAULT (ALL 4,579 ITEMS) ==================== -->
+      <div id="view-vault" class="hidden space-y-4">
+        <div class="panel p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-extrabold text-white">🗄️ Question Vault — All 4,579 ABE Items</h1>
+              <p class="text-xs text-slate-400">Search across Area 1, Area 2, and Area 3 by PAES code, RA 10915, formula, or topic.</p>
+            </div>
+            <span id="vault-result-count" class="text-xs font-mono font-bold text-emerald-400">Showing 50 of 4,579</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <input id="vault-search-input" oninput="app.renderVault()" type="text" placeholder="Search centrifugal pump, PAES, RA 10915, aquifer..." class="sm:col-span-2 bg-navy-950 border border-blue-900/60 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-sky-400" />
+            <select id="vault-filter-area" onchange="app.renderVault()" class="bg-navy-950 border border-blue-900/60 rounded-xl px-3 py-2 text-xs text-white">
+              <option value="all">All 3 Areas (4,579)</option>
+              <option value="1">Area 1: Power & Machinery (1,222)</option>
+              <option value="2">Area 2: Land & Water (1,242)</option>
+              <option value="3">Area 3: Structures & Bioprocess (2,115)</option>
+            </select>
+            <select id="vault-filter-cat" onchange="app.renderVault()" class="bg-navy-950 border border-blue-900/60 rounded-xl px-3 py-2 text-xs text-white">
+              <option value="all">All Source Banks</option>
+              <option value="practice_mcq">2023-2024 Practice MCQs</option>
+              <option value="tambong_qa">Tambong Subject Q&As</option>
+              <option value="additional_qa">Recalled Q&As</option>
+              <option value="main_anki">Main Illustrated Anki</option>
+              <option value="problem_solving">Problem Solving Manual</option>
+            </select>
+          </div>
+        </div>
+        <div id="vault-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ==================== VIEW 5: PROGRESS & ALL 48 LEVELS OVERVIEW ==================== -->
+      <div id="view-progress" class="hidden space-y-4">
+        <div class="panel p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 class="text-xl font-extrabold text-white">📊 Detailed Level-by-Level Progress (All 48 Levels)</h1>
+            <p class="text-xs text-slate-400">Every 100-item milestone across Area 1 (13 Levels), Area 2 (13 Levels), and Area 3 (22 Levels).</p>
+          </div>
+          <button onclick="app.showView('dashboard')" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-white">← Back to Dashboard</button>
+        </div>
+        <div id="all-levels-progress-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+      </div>
+
+      <!-- ==================== VIEW 6: OWNER ADMIN CONSOLE ==================== -->
+      <div id="view-admin" class="hidden max-w-5xl mx-auto space-y-4">
+        <div class="panel p-5 border border-amber-500/40 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 text-[10px] font-black uppercase">👑 OWNER ONLY</span>
+              <h1 class="text-xl font-extrabold text-white">Project Bayaw Admin Console</h1>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Sign in with your Owner Passcode to activate your <strong>OWNER</strong> badge, grant custom titles to reviewees, or reset leaderboards.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-admin-logout" onclick="app.adminSignOut()" class="hidden px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-xs font-bold text-rose-300">Sign Out</button>
+            <button onclick="app.showView('dashboard')" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-white">← Back to Dashboard</button>
+          </div>
+        </div>
+
+        <!-- Admin Sign-In Gate -->
+        <div id="admin-login-box" class="panel p-6 max-w-md mx-auto space-y-4">
+          <h2 class="text-sm font-extrabold text-amber-300">🔐 Owner Admin Sign-In</h2>
+          <p class="text-xs text-slate-400">Enter your secret Owner Admin Passcode to unlock leaderboard resets, custom title awards, and your verified 👑 OWNER tag.</p>
+          <input id="admin-passcode-input" type="password" onkeydown="if(event.key==='Enter') app.adminSignIn()" placeholder="Enter Owner Passcode..." class="w-full bg-navy-950 border border-amber-500/40 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400" />
+          <div id="admin-login-error" class="hidden text-xs text-rose-400 font-semibold"></div>
+          <button onclick="app.adminSignIn()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-navy-950 font-extrabold text-xs shadow-lg">
+            Unlock Owner Admin Tools
+          </button>
+        </div>
+
+        <!-- Admin Tools Body (Visible only after verified sign-in) -->
+        <div id="admin-tools-body" class="hidden space-y-4">
+          <!-- 2-Day Launch Promo (5 Days Free Trial) Control -->
+          <div class="panel p-5 space-y-3 border border-teal-400/45 bg-gradient-to-r from-emerald-950/40 to-navy-950/80">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-sm font-extrabold text-emerald-300">🎉 2-Day Launch Promo (Auto 5-Day Free Trial)</h2>
+                  <span id="admin-promo-status-pill" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[10px] font-black text-emerald-300">Checking...</span>
+                </div>
+                <p class="text-xs text-slate-300 mt-0.5">While active, anyone signing up gets <strong>5 Days Free Access</strong> with no code required. Automatically switches back to Access-Code-Only when the 48-hour timer ends!</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="app.adminSetPromo(true, 48, 5)" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow">
+                  ▶ Start / Reset 48h Promo (5d Free)
+                </button>
+                <button onclick="app.adminSetPromo(false, 0, 5)" class="px-3.5 py-2 rounded-xl bg-rose-600/25 hover:bg-rose-600/45 border border-rose-400/50 text-rose-200 font-bold text-xs">
+                  ⏹ Stop Promo Now (Require Code)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Generate Soft Launch Access Codes -->
+          <div class="panel p-5 space-y-3 border border-emerald-500/40">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-sm font-extrabold text-emerald-300">🎫 Access Code Generator (3 Days / 7 Days / 1 Month / 3 Months / Unli)</h2>
+                <p class="text-xs text-slate-400">Generate timed or unlimited invite codes for reviewees to register and unlock Project Bayaw App.</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <input id="admin-access-label" type="text" placeholder="Note (e.g. Batch 1)" class="w-28 bg-navy-950 border border-emerald-500/35 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                <select id="admin-access-duration" class="bg-navy-950 border border-amber-500/45 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-amber-300">
+                  <option value="3d">⏱️ 3 Days</option>
+                  <option value="7d">⏱️ 7 Days</option>
+                  <option value="30d">📅 1 Month (30d)</option>
+                  <option value="90d">📅 3 Months (90d)</option>
+                  <option value="unli" selected>♾️ Unlimited</option>
+                </select>
+                <select id="admin-access-maxuses" class="bg-navy-950 border border-emerald-500/35 rounded-lg px-2.5 py-1.5 text-xs font-bold text-emerald-300">
+                  <option value="1">1 Use</option>
+                  <option value="5">5 Uses</option>
+                  <option value="20">20 Uses</option>
+                  <option value="100">100 Uses</option>
+                </select>
+                <button onclick="app.adminGenerateAccessCode()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-navy-950 font-extrabold text-xs shadow-lg">
+                  + Generate Code
+                </button>
+              </div>
+            </div>
+            <div id="admin-access-codes-list" class="space-y-1.5 pt-1"></div>
+          </div>
+
+          <!-- Live Online Users & Registered Accounts Access Manager -->
+          <div class="panel p-5 space-y-3 border border-sky-500/40">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-sm font-extrabold text-sky-300">🟢 Live Online Users & Reviewee Access Manager</h2>
+                  <span id="admin-online-pill" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[10px] font-black text-emerald-300">0 Online Now</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">Monitor who is currently online, which Access Code they used, their Days Remaining, and Revoke or Restore access anytime.</p>
+              </div>
+              <button onclick="app.loadAdminAccounts()" class="px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-xs font-bold text-sky-300">↻ Refresh Live Users</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-slate-400 border-b border-blue-900/50">
+                    <th class="py-2 text-left">Status & User</th>
+                    <th class="py-2 text-left">Access Code Used</th>
+                    <th class="py-2 text-center">Plan / Days Left</th>
+                    <th class="py-2 text-right">Access Control</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-accounts-tbody" class="divide-y divide-blue-900/30"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- User Feedback & Suggestions Inbox (Owner Only) -->
+          <div class="panel p-5 space-y-3 border border-teal-500/40">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-sm font-extrabold text-teal-300">💡 Reviewee Feedback & Suggestions Inbox</h2>
+                <p class="text-xs text-slate-400">Read suggestions, bug reports, and question corrections submitted by your reviewees.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="app.adminClearChat()" class="px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-400/40 text-xs font-bold text-rose-300">🧹 Clear Global Chat</button>
+                <button onclick="app.loadAdminFeedback()" class="px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-xs font-bold text-teal-300">↻ Refresh Inbox</button>
+              </div>
+            </div>
+            <div id="admin-feedback-list" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+          </div>
+
+          <!-- Generate One-Time Reviewee Reset Code -->
+          <div class="panel p-5 space-y-3 border border-amber-500/35">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-sm font-extrabold text-amber-300">🔑 Generate One-Time Reviewee Reset Code</h2>
+                <p class="text-xs text-slate-400">Reviewees cannot reset their local progress without asking you for a one-time Reset Code (valid 24 hours, single-use).</p>
+              </div>
+              <button onclick="app.adminGenerateResetCode()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-navy-950 font-extrabold text-xs shadow-lg">
+                + Generate Reset Code
+              </button>
+            </div>
+            <div id="admin-generated-code-box" class="hidden flex items-center justify-between bg-navy-950 border border-amber-400/50 rounded-xl px-4 py-3">
+              <div>
+                <div class="text-[10px] uppercase text-slate-400 font-bold">Share this one-time Reset Code with the reviewee:</div>
+                <div id="admin-generated-code-text" class="text-lg font-mono font-black text-amber-300 tracking-wider mt-0.5">RESET-XXXXXX</div>
+              </div>
+              <button onclick="app.copyGeneratedResetCode()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-200 text-xs font-bold">
+                📋 Copy Code
+              </button>
+            </div>
+          </div>
+
+          <!-- Leaderboard Reset Tools -->
+          <div class="panel p-5 space-y-3 border border-rose-500/30">
+            <h2 class="text-sm font-extrabold text-rose-300">⚠️ Leaderboard Management & Resets</h2>
+            <p class="text-xs text-slate-400">Reset scores for a fresh review season or clear test entries across all real reviewees.</p>
+            <div class="flex flex-wrap gap-3 pt-1">
+              <button onclick="app.adminResetLeaderboard('pvp')" class="px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/40 border border-purple-400/50 text-purple-200 text-xs font-bold">
+                Reset 1v1 PvP Ranks Only (Back to 1,200 RP)
+              </button>
+              <button onclick="app.adminResetLeaderboard('progression')" class="px-4 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/40 border border-amber-400/50 text-amber-200 text-xs font-bold">
+                Reset Progression XP & Levels Only
+              </button>
+              <button onclick="app.adminResetLeaderboard('all')" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold shadow-lg">
+                Wipe & Reset Entire Leaderboard
+              </button>
+            </div>
+          </div>
+
+          <!-- Award Custom Titles & Manage Real Reviewees -->
+          <div class="panel p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-sm font-extrabold text-emerald-400">🏷️ Give Custom Titles & Tags to Reviewees</h2>
+                <p class="text-xs text-slate-400">Assign special badges like <code>Topnotcher</code>, <code>Area 1 Ace</code>, <code>Moderator</code>, <code>VIP Reviewee</code>, or toggle <code>👑 OWNER</code>.</p>
+              </div>
+              <button onclick="app.refreshAdminUsers()" class="px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-xs font-bold text-sky-300">↻ Refresh List</button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-slate-400 border-b border-blue-900/50">
+                    <th class="py-2 text-left">Reviewee</th>
+                    <th class="py-2 text-left">Current Title / Tag</th>
+                    <th class="py-2 text-center">Stats</th>
+                    <th class="py-2 text-right">Admin Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-tbody" class="divide-y divide-blue-900/30"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION BAR (OPTIMIZED FOR PHONES) -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-blue-900/60 px-2 py-1.5 flex items-center justify-around">
+    <button onclick="app.showView('dashboard')" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-sky-300">
+      <span class="text-base">🏠</span>
+      <span>Study</span>
+    </button>
+    <button onclick="app.openProblemSolvingMode(1)" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-amber-300">
+      <span class="text-base">🧮</span>
+      <span>PS Math</span>
+    </button>
+    <button onclick="app.openPvpLobby()" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-purple-300">
+      <span class="text-base">⚔️</span>
+      <span>1v1 PvP</span>
+    </button>
+    <button onclick="app.showView('leaderboards')" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-emerald-300">
+      <span class="text-base">🏆</span>
+      <span>Ranks</span>
+    </button>
+    <button onclick="app.showView('vault')" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300">
+      <span class="text-base">🗄️</span>
+      <span>Vault</span>
+    </button>
+    <button onclick="app.openAdminPanel()" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-amber-400">
+      <span class="text-base">👑</span>
+      <span>Owner</span>
+    </button>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-api.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
