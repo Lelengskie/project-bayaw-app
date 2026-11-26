@@ -1320,7 +1320,7 @@ class AgriBoardApp {
     document.getElementById('study-flip-btn-wrap').classList.add('hidden');
     document.getElementById('study-answer-box').classList.remove('hidden');
     document.getElementById('study-answer-text').textContent = card.answer;
-    document.getElementById('study-rationale-text').textContent = card.rationale || `Source: ${card.source} • ${card.subtopic}`;
+    document.getElementById('study-rationale-text').innerHTML = this.formatRationaleHtml(card);
 
     // Unblur any solution images clearly
     document.querySelectorAll('.study-solution-img').forEach(img => {
@@ -2463,6 +2463,130 @@ class AgriBoardApp {
 
   escapeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  plainExprToLatex(expr) {
+    let s = String(expr || '').trim();
+    // Protect common engineering units in \text{...}
+    s = s.replace(/\bm_dot\b/g, '\\dot{m}');
+    s = s.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+    s = s.replace(/√(\d+(?:\.\d+)?|[A-Za-z]+)/g, '\\sqrt{$1}');
+    // Exponents & superscripts
+    s = s.replace(/\^\(([^)]+)\)/g, '^{$1}');
+    s = s.replace(/\^(-?[A-Za-z0-9\.]+)/g, '^{$1}');
+    s = s.replace(/²/g, '^{2}').replace(/³/g, '^{3}');
+    // Subscripts like T_i, S_d, P_w, c_p
+    s = s.replace(/\b([A-Za-z])_([A-Za-z0-9]+)\b/g, '$1_{$2}');
+    // Symbols
+    s = s.replace(/=>|⇒/g, ' \\Rightarrow ').replace(/->|→/g, ' \\rightarrow ');
+    s = s.replace(/×/g, ' \\times ').replace(/÷/g, ' \\div ');
+    s = s.replace(/≈/g, ' \\approx ').replace(/≤/g, ' \\le ').replace(/≥/g, ' \\ge ').replace(/±/g, ' \\pm ');
+    s = s.replace(/π/g, '\\pi ').replace(/Δ/g, '\\Delta ').replace(/θ/g, '\\theta ').replace(/η/g, '\\eta ').replace(/°/g, '^\\circ ');
+    // Stacked fractions for clean patterns: (a)/(b) or (a/b) or num/den where not a unit like m/s or ha/hr
+    const unitDen = /^(s|hr|hrs|h|min|day|kg|g|m|cm|mm|km|L|mL|ha|gal|lb|lbs|ft|in|s\^\{2\}|m\^\{2\}|m\^\{3\}|kW|hp|yr|year|rev|pass|row|bag|bags|head|heads|°C|C|K)$/i;
+    s = s.replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, '\\frac{$1}{$2}');
+    s = s.replace(/\(([^()\/]+)\/([^()\/]+)\)/g, (m, a, b) => unitDen.test(b.trim()) ? m : `\\left(\\frac{${a.trim()}}{${b.trim()}}\\right)`);
+    s = s.replace(/(?<![A-Za-z\\])(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\d+[A-Za-z]|\\sqrt\{[^}]+\})\s*\/\s*(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\\sqrt\{[^}]+\})/g, (m, a, b) => {
+      if (unitDen.test(b.trim())) return m;
+      return `\\frac{${a.trim()}}{${b.trim()}}`;
+    });
+    // Escape % and $ for KaTeX
+    s = s.replace(/%/g, '\\%').replace(/\$/g, '\\$');
+    return s;
+  }
+
+  renderKatexSafe(expr, displayMode = false) {
+    if (typeof window.katex !== 'undefined') {
+      try {
+        const latex = this.plainExprToLatex(expr);
+        return window.katex.renderToString(latex, { throwOnError: false, displayMode, strict: false });
+      } catch (e) {}
+    }
+    return `<span class="font-mono text-emerald-200">${this.escapeHtml(expr)}</span>`;
+  }
+
+  formatRationaleHtml(card) {
+    const raw = (card.rationale || '').trim();
+    if (!raw) {
+      return `<div class="text-slate-300 text-xs">Source: ${this.escapeHtml(card.source || '')} • ${this.escapeHtml(card.subtopic || '')}</div>`;
+    }
+
+    // Check if this rationale contains math equations/steps
+    const hasMath = raw.includes('=') || /Given:|Formula:|Step \d+:/i.test(raw);
+    if (!hasMath) {
+      return `<div class="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">${this.escapeHtml(raw)}</div>`;
+    }
+
+    // Break dense single-paragraph solutions into clear logical lines
+    let normalized = raw
+      .replace(/\s*(Given\s*:)/gi, '\n$1')
+      .replace(/\s*(Formula\s*:|Using [^:]{3,35}:)/gi, '\n$1')
+      .replace(/\s*(Step\s*\d+\s*:)/gi, '\n$1')
+      .replace(/\s*(Substitution\s*:|Solving[^:]*:|Calculate[^:]*:|Convert[^:]*:)/gi, '\n$1')
+      .replace(/\s*(⇒|=>)\s*/g, '\n⇒ ')
+      .replace(/\s*(Answer\s*[=:]|Therefore\s*,?)/gi, '\n$1')
+      .replace(/\.\s+(?=[A-Z][a-zA-Z0-9_ ]{0,22}\s*=)/g, '.\n');
+
+    const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+
+    const htmlLines = lines.map(line => {
+      // Tag badge for Given / Formula / Step / Answer
+      const labelMatch = line.match(/^(Given|Formula|Step\s*\d+|Substitution|Answer|Therefore|Reference|Notes)\s*[:=]?\s*(.*)$/i);
+      if (labelMatch) {
+        const lbl = labelMatch[1];
+        const rest = labelMatch[2].trim();
+        const isAns = /^(Answer|Therefore)$/i.test(lbl);
+        const isGiven = /^Given$/i.test(lbl);
+        const badgeCls = isAns
+          ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-200'
+          : isGiven
+            ? 'bg-sky-500/20 border-sky-400/40 text-sky-200'
+            : 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200';
+        const bodyHtml = this.formatMathLineContent(rest);
+        return `
+          <div class="flex flex-col sm:flex-row sm:items-baseline gap-1.5 py-1">
+            <span class="px-2 py-0.5 rounded-md border text-[10px] font-extrabold uppercase tracking-wider shrink-0 self-start ${badgeCls}">${this.escapeHtml(lbl)}</span>
+            <div class="text-xs sm:text-sm text-slate-100 leading-relaxed flex-1 overflow-x-auto">${bodyHtml}</div>
+          </div>
+        `;
+      }
+
+      // Pure equation line (starts with ⇒ or has = and mostly math symbols)
+      const isEqLine = line.startsWith('⇒') || (line.includes('=') && line.length < 130 && !/^[A-Z][a-z]+\s+[a-z]+\s+[a-z]+\s+[a-z]+/.test(line));
+      if (isEqLine) {
+        const eqText = line.replace(/^⇒\s*/, '');
+        const prefix = line.startsWith('⇒') ? '<span class="text-emerald-400 font-bold mr-1.5">⇒</span>' : '';
+        return `
+          <div class="bg-navy-950/85 border border-emerald-500/25 rounded-xl px-3.5 py-2 my-1 overflow-x-auto text-emerald-100 text-sm">
+            ${prefix}${this.renderKatexSafe(eqText, false)}
+          </div>
+        `;
+      }
+
+      return `<div class="text-xs sm:text-sm text-slate-200 leading-relaxed py-0.5">${this.formatMathLineContent(line)}</div>`;
+    });
+
+    return `<div class="space-y-1.5 pt-1">${htmlLines.join('')}</div>`;
+  }
+
+  formatMathLineContent(text) {
+    if (!text) return '';
+    // If the whole segment is a clean equation (contains '=' and few prose words), render via KaTeX!
+    const words = text.match(/\b[a-z]{4,}\b/g) || [];
+    if (text.includes('=') && words.length <= 3 && text.length <= 110) {
+      return `<span class="inline-block bg-navy-950/80 border border-emerald-500/20 rounded-lg px-2.5 py-1 text-emerald-100">${this.renderKatexSafe(text, false)}</span>`;
+    }
+    // Otherwise render inline equations separated by semicolons/commas or embedded formulas like "A = √3 d²"
+    const escaped = this.escapeHtml(text);
+    // Highlight inline equation segments like "Q = 5 m³/s", "R = d/2", "b = 2d/√3"
+    return escaped.replace(/([A-Za-zΔηθπ][A-Za-z0-9_]*\s*=\s*[^,.;\n]{1,52})/g, (match) => {
+      // Unescape basic entities for KaTeX
+      const rawEq = match.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+      if (/[0-9√^\/×÷²³]/.test(rawEq)) {
+        return `<span class="inline-block bg-navy-950/75 border border-emerald-500/20 rounded px-1.5 py-0.5 mx-0.5 text-emerald-100 align-middle">${this.renderKatexSafe(rawEq, false)}</span>`;
+      }
+      return match;
+    });
   }
 }
 
