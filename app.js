@@ -2183,6 +2183,22 @@ class AgriBoardApp {
     alert('🧹 Global Chat cleared!');
   }
 
+  reportCurrentQuestion(source = 'study') {
+    const card = source === 'pvp'
+      ? (this.pvpPlayerQueue && this.pvpPlayerQueue[0])
+      : (this.currentDeck && this.currentDeck[this.currentCardIdx]);
+    this.openFeedbackModal();
+    const catEl = document.getElementById('feedback-category');
+    const msgEl = document.getElementById('feedback-message');
+    if (catEl) catEl.value = 'Question Correction';
+    if (msgEl && card) {
+      const qPreview = (card.question || '').slice(0, 90);
+      msgEl.value = `[Item #${card.id} | Area ${card.area} | ${card.levelLabel}]\nQ: "${qPreview}..."\nCurrent Answer: "${card.answer}"\n\nCorrection / Issue: `;
+      msgEl.focus();
+      msgEl.setSelectionRange(msgEl.value.length, msgEl.value.length);
+    }
+  }
+
   openFeedbackModal() {
     const modal = document.getElementById('feedback-modal');
     const msg = document.getElementById('feedback-message');

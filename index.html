@@ -705,6 +705,9 @@
                     <span id="study-area-pill" class="px-2.5 py-0.5 rounded-md bg-blue-600/35 border border-blue-400/50 text-xs font-bold text-sky-200">Area 1</span>
                     <span id="study-id-pill" class="font-mono text-xs text-slate-400 bg-navy-950/70 px-2 py-0.5 rounded border border-blue-900/40">#A1-0001</span>
                   </div>
+                  <button onclick="app.reportCurrentQuestion('study')" title="Report typo or answer correction" class="text-[10px] font-semibold text-slate-400 hover:text-amber-300 px-2 py-0.5 rounded-md hover:bg-amber-500/10 transition-all">
+                    🚩 Report
+                  </button>
                 </div>
 
                 <div id="study-question-text" class="text-base sm:text-lg font-bold text-white leading-relaxed whitespace-pre-line">
@@ -1060,7 +1063,10 @@
 
           <div class="flex items-center justify-between text-xs text-slate-400">
             <span id="pvp-q-subtopic" class="font-semibold text-sky-400">1.1 Power Engineering</span>
-            <span id="pvp-q-id" class="font-mono">#A1-0001</span>
+            <div class="flex items-center gap-2">
+              <span id="pvp-q-id" class="font-mono">#A1-0001</span>
+              <button onclick="app.reportCurrentQuestion('pvp')" title="Report typo or correction" class="text-[10px] text-slate-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10">🚩 Report</button>
+            </div>
           </div>
           <div id="pvp-q-text" class="text-base sm:text-lg font-bold text-white leading-relaxed"></div>
           <div id="pvp-q-images" class="hidden flex flex-wrap gap-3"></div>
@@ -1402,7 +1408,7 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-api.js?v=20261126c"></script>
-  <script src="./app.js?v=20261126c"></script>
+  <script src="./supabase-api.js?v=20261126d"></script>
+  <script src="./app.js?v=20261126d"></script>
 </body>
 </html>
