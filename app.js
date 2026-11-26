@@ -551,7 +551,7 @@ class AgriBoardApp {
         this.sendHeartbeat();
       }
       setInterval(() => this.fetchLiveLeaderboard(), 20000);
-      setInterval(() => this.loadGlobalChat(), 10000);
+      setInterval(() => { if (!document.hidden) this.loadGlobalChat(); }, 2000);
       setInterval(() => this.sendHeartbeat(), 30000);
     } catch (err) {
       document.getElementById('loading-overlay').innerHTML = `
