@@ -358,8 +358,12 @@
         </button>
       </nav>
 
-      <!-- Global Search & Profile -->
-      <div class="flex items-center gap-3">
+      <!-- Global Search, Live Online Count & Profile -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div id="header-online-pill" title="Real reviewees currently online" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-[11px] font-extrabold text-emerald-300 shrink-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="header-online-count">1 Online</span>
+        </div>
         <div class="relative hidden sm:block">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
           <input id="global-search-input" onkeydown="if(event.key==='Enter') app.globalSearch(this.value)" type="text" placeholder="Search 4,579 questions..." class="w-48 xl:w-64 bg-navy-900 border border-blue-900/60 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400" />
@@ -1466,7 +1470,7 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-api.js?v=20261126f"></script>
-  <script src="./app.js?v=20261126f"></script>
+  <script src="./supabase-api.js?v=20261126g"></script>
+  <script src="./app.js?v=20261126g"></script>
 </body>
 </html>

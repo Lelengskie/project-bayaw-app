@@ -155,6 +155,11 @@ class AgriBoardApp {
           this.promoState = data.promo;
           this.updatePromoUI();
         }
+        const onlineEl = document.getElementById('header-online-count');
+        if (onlineEl) {
+          const onlineCnt = Math.max(this.user.loggedIn ? 1 : 0, Number(data.onlineCount) || 0);
+          onlineEl.textContent = `${onlineCnt} Online`;
+        }
         const me = this.liveLeaderboard.allUsers.find(u => u.id === this.user.id);
         if (me) {
           this.user.isOwner = !!me.isOwner;

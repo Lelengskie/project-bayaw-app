@@ -27,10 +27,13 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
   try {
     if (method === 'GET') {
       const [{ data: accs, error: accErr }, { data: cfg }] = await Promise.all([
-        sb.from('accounts').select('id,username_key,name,is_owner,title,a1_levels,a2_levels,a3_levels,a1_mastered,a2_mastered,a3_mastered,total_mastered,xp,rp,pvp_wins,pvp_losses,best_time_sec,updated_at'),
+        sb.from('accounts').select('id,username_key,name,is_owner,title,a1_levels,a2_levels,a3_levels,a1_mastered,a2_mastered,a3_mastered,total_mastered,xp,rp,pvp_wins,pvp_losses,best_time_sec,last_active_at,updated_at'),
         sb.from('app_config').select('value').eq('key', 'launch_promo').maybeSingle()
       ]);
       if (accErr) return okRes({ error: accErr.message }, 500);
+
+      const nowMs = Date.now();
+      const onlineCount = (accs || []).filter(a => a.last_active_at && (nowMs - a.last_active_at) <= 90 * 1000).length;
 
       const records = (accs || []).map(a => ({
         id: a.id,
@@ -67,6 +70,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
       return okRes({
         totalReviewees: records.length,
+        onlineCount,
         progression,
         pvp,
         allUsers: records.sort((a, b) => b.updatedAt - a.updatedAt),
