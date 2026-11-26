@@ -188,8 +188,9 @@
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <h2 class="text-sm font-extrabold text-emerald-300">💬 Global Reviewee Chat</h2>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="app.closeMobileChat(); app.openFeedbackModal()" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-bold text-emerald-200">💡 Suggest</button>
+        <div class="flex items-center gap-1.5">
+          <button onclick="app.closeMobileChat(); app.openSubmitReviewerModal()" class="px-2 py-1 rounded-lg bg-sky-500/20 border border-sky-400/40 text-[10px] font-bold text-sky-200">📤 Submit .docx</button>
+          <button onclick="app.closeMobileChat(); app.openFeedbackModal()" class="px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-bold text-emerald-200">💡 Suggest</button>
           <button onclick="app.closeMobileChat()" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
         </div>
       </div>
@@ -236,6 +237,53 @@
         <button onclick="app.closeFeedbackModal()" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-slate-300">Cancel</button>
         <button id="btn-submit-feedback" onclick="app.submitFeedback()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-xs font-extrabold text-white shadow-lg">
           Send to Owner
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMIT REVIEWER (.DOCX / .PDF) MODAL -->
+  <div id="submit-reviewer-modal" class="hidden fixed inset-0 z-50 bg-navy-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="panel max-w-md w-full p-6 border border-sky-400/50 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📤</span>
+          <h2 class="text-base font-extrabold text-white">Submit Reviewer (.docx / .pdf)</h2>
+        </div>
+        <button onclick="app.closeSubmitReviewerModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Want to share your ABELE reviewer so we can add it to Project Bayaw App? Upload your <strong>.docx</strong> or <strong>.pdf</strong> file below (max 15 MB). Verified contributors can receive <strong>bonus access days</strong> from the 👑 Owner!
+      </p>
+      <div class="space-y-3">
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">PRC Board Exam Area</label>
+          <select id="rev-submit-area" class="w-full bg-navy-950 border border-sky-500/35 rounded-xl px-3 py-2 text-xs font-bold text-white">
+            <option value="Area 1">Area 1 — AB Power, Energy & Machinery</option>
+            <option value="Area 2">Area 2 — Land & Water Resources</option>
+            <option value="Area 3">Area 3 — AB Structures, Env. & Bioprocess</option>
+            <option value="Mixed / All Areas">Mixed / All Areas</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Reviewer Title / Topic</label>
+          <input id="rev-submit-title" type="text" maxlength="100" placeholder="e.g. 2025 Recalled Irrigation & Hydrology Q&A" class="w-full bg-navy-950 border border-sky-500/35 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-sky-400" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Reviewer File (.docx, .doc, or .pdf — max 15 MB)</label>
+          <input id="rev-submit-file" type="file" accept=".docx,.doc,.pdf" onchange="app.onReviewerFileSelected()" class="w-full bg-navy-950 border border-dashed border-sky-400/50 rounded-xl px-3 py-2.5 text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer" />
+          <div id="rev-submit-file-info" class="hidden text-[11px] text-sky-300 font-mono"></div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Short Note (Optional)</label>
+          <textarea id="rev-submit-notes" rows="2" maxlength="350" placeholder="e.g. Contains 120 items with highlighted answer keys..." class="w-full bg-navy-950 border border-sky-500/35 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-sky-400"></textarea>
+        </div>
+        <div id="rev-submit-status" class="hidden text-xs font-semibold"></div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button onclick="app.closeSubmitReviewerModal()" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-slate-300">Cancel</button>
+        <button id="btn-submit-reviewer" onclick="app.submitReviewerFile()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:brightness-110 text-xs font-extrabold text-white shadow-lg">
+          📤 Upload Reviewer
         </button>
       </div>
     </div>
@@ -415,6 +463,9 @@
         </button>
         <button onclick="app.logoutAccount()" class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-950/50 border border-rose-500/30">
           <span>🚪</span> Sign Out / Switch Account
+        </button>
+        <button onclick="app.openSubmitReviewerModal()" class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-sky-300 hover:text-white hover:bg-sky-500/20 border border-sky-500/30">
+          <span>📤</span> Submit Reviewer (.docx)
         </button>
         <button onclick="app.openFeedbackModal()" class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30">
           <span>💡</span> Feedback / Suggest
@@ -1284,6 +1335,24 @@
             </div>
           </div>
 
+          <!-- Submitted Reviewers (.docx / .pdf) & Contributor Rewards (Owner Only) -->
+          <div class="panel p-5 space-y-3 border border-indigo-400/45">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="text-sm font-extrabold text-indigo-300">📥 Submitted Reviewers (.docx / .pdf) & Contributors</h2>
+                  <span id="admin-reviewers-storage-pill" class="px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/50 text-[10px] font-mono font-bold text-indigo-200">0 files • 0.0 MB / 1,000 MB</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">Download reviewee-contributed files, track how many each person sent, reward them access days, and free storage after importing.</p>
+              </div>
+              <button onclick="app.loadAdminReviewers()" class="px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-xs font-bold text-indigo-300">↻ Refresh Files</button>
+            </div>
+            <!-- Per-user contributor count strip -->
+            <div id="admin-reviewers-contributors" class="flex flex-wrap gap-2"></div>
+            <!-- Submitted files list -->
+            <div id="admin-reviewers-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+          </div>
+
           <!-- User Feedback & Suggestions Inbox (Owner Only) -->
           <div class="panel p-5 space-y-3 border border-teal-500/40">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1397,7 +1466,7 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-api.js?v=20261126e"></script>
-  <script src="./app.js?v=20261126e"></script>
+  <script src="./supabase-api.js?v=20261126f"></script>
+  <script src="./app.js?v=20261126f"></script>
 </body>
 </html>

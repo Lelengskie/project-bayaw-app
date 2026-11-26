@@ -297,6 +297,64 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       return okRes({ ok: true });
     }
 
+    // 2B. SUBMITTED REVIEWERS (.DOCX / .PDF) INBOX
+    if (action === 'admin_list_reviewers') {
+      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      const { data, error } = await sb.from('reviewer_submissions').select('*').order('created_at', { ascending: false }).limit(200);
+      if (error) return okRes({ ok: false, error: error.message }, 500);
+      const list = (data || []).map(r => ({
+        id: r.id,
+        usernameKey: r.username_key,
+        senderName: r.sender_name,
+        area: r.area || 'Mixed',
+        title: r.title || r.file_name,
+        notes: r.notes || '',
+        fileName: r.file_name,
+        fileSize: r.file_size || 0,
+        filePath: r.file_path || null,
+        fileUrl: r.file_url || null,
+        status: r.status || 'pending',
+        createdAt: r.created_at
+      }));
+      const countMap = {};
+      let activeStorageBytes = 0;
+      let activeFilesCount = 0;
+      for (const r of list) {
+        if (!countMap[r.usernameKey]) {
+          countMap[r.usernameKey] = { usernameKey: r.usernameKey, senderName: r.senderName, count: 0 };
+        }
+        countMap[r.usernameKey].count += 1;
+        if (r.filePath) {
+          activeStorageBytes += Number(r.fileSize) || 0;
+          activeFilesCount += 1;
+        }
+      }
+      const contributors = Object.values(countMap).sort((a, b) => b.count - a.count);
+      return okRes({ ok: true, reviewers: list, contributors, activeStorageBytes, activeFilesCount });
+    }
+
+    if (action === 'admin_mark_reviewer_added') {
+      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      const id = String(body.reviewerId || '');
+      const { data: rec } = await sb.from('reviewer_submissions').select('file_path').eq('id', id).maybeSingle();
+      if (rec?.file_path) {
+        await sb.storage.from('reviewer-submissions').remove([rec.file_path]);
+      }
+      await sb.from('reviewer_submissions').update({ status: 'added', file_path: null, file_url: null }).eq('id', id);
+      return okRes({ ok: true });
+    }
+
+    if (action === 'admin_delete_reviewer') {
+      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      const id = String(body.reviewerId || '');
+      const { data: rec } = await sb.from('reviewer_submissions').select('file_path').eq('id', id).maybeSingle();
+      if (rec?.file_path) {
+        await sb.storage.from('reviewer-submissions').remove([rec.file_path]);
+      }
+      await sb.from('reviewer_submissions').delete().eq('id', id);
+      return okRes({ ok: true });
+    }
+
     // 3. AUTH: REGISTER, LOGIN, HEARTBEAT
     if (action === 'auth_register') {
       const displayName = String(body.username || '').trim().slice(0, 24);
@@ -481,7 +539,16 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
     if (action === 'admin_list_accounts') {
       if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
-      const { data } = await sb.from('accounts').select('id,username_key,name,is_owner,title,access_code_used,access_duration_label,access_expires_at,revoked,last_active_at,xp,rp');
+      const [{ data }, revRes] = await Promise.all([
+        sb.from('accounts').select('id,username_key,name,is_owner,title,access_code_used,access_duration_label,access_expires_at,revoked,last_active_at,xp,rp'),
+        sb.from('reviewer_submissions').select('username_key')
+      ]);
+      const revCounts = {};
+      if (!revRes?.error && Array.isArray(revRes?.data)) {
+        for (const r of revRes.data) {
+          revCounts[r.username_key] = (revCounts[r.username_key] || 0) + 1;
+        }
+      }
       const now = Date.now();
       const accounts = (data || []).map(acc => {
         const isOnline = !!(acc.last_active_at && (now - acc.last_active_at) <= 90 * 1000);
@@ -493,7 +560,8 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
           accessDurationLabel: acc.access_duration_label || 'Unlimited',
           accessExpiresAt: acc.access_expires_at ?? null,
           daysRemaining, revoked: !!acc.revoked, isOnline,
-          lastActiveAt: acc.last_active_at || 0, xp: acc.xp || 0, rp: acc.rp || 1200
+          lastActiveAt: acc.last_active_at || 0, xp: acc.xp || 0, rp: acc.rp || 1200,
+          reviewersSent: revCounts[acc.username_key] || 0
         };
       }).sort((a, b) => (Number(b.isOnline) - Number(a.isOnline)) || (b.lastActiveAt - a.lastActiveAt));
       return okRes({ ok: true, onlineCount: accounts.filter(a => a.isOnline).length, totalAccounts: accounts.length, accounts });
@@ -644,4 +712,58 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     console.error('Supabase API error:', err);
     return okRes({ ok: false, error: err?.message || 'Supabase error' }, 500);
   }
+};
+
+// Direct Supabase Storage uploader for reviewee .docx / .pdf contributions
+window.bayawUploadReviewer = async function(file, meta = {}) {
+  const sb = window.sbClient;
+  const maxBytes = 15 * 1024 * 1024; // 15 MB cap
+  if (!file) return { ok: false, error: 'Please select a .docx or .pdf file.' };
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (!['docx', 'doc', 'pdf'].includes(ext)) {
+    return { ok: false, error: 'Only .docx, .doc, or .pdf reviewer files are allowed.' };
+  }
+  if (file.size > maxBytes) {
+    return { ok: false, error: 'File is too large. Maximum allowed size is 15 MB.' };
+  }
+
+  const uKey = normKey(meta.usernameKey || meta.senderName || 'guest') || 'guest';
+  const senderName = String(meta.senderName || 'Reviewee').trim().slice(0, 28);
+  const area = String(meta.area || 'Mixed / All Areas').trim().slice(0, 40);
+  const title = String(meta.title || file.name).trim().slice(0, 120);
+  const notes = String(meta.notes || '').trim().slice(0, 400);
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+  const now = Date.now();
+  const filePath = `${uKey}/${now}_${safeName}`;
+
+  const { error: upErr } = await sb.storage.from('reviewer-submissions').upload(filePath, file, {
+    cacheControl: '3600',
+    upsert: false
+  });
+  if (upErr) return { ok: false, error: upErr.message || 'Upload failed.' };
+
+  const { data: urlData } = sb.storage.from('reviewer-submissions').getPublicUrl(filePath);
+  const fileUrl = urlData?.publicUrl || '';
+
+  const row = {
+    id: `rev_${now}_${Math.random().toString(36).slice(2, 6)}`,
+    username_key: uKey,
+    sender_name: senderName,
+    area,
+    title,
+    notes,
+    file_name: file.name.slice(0, 120),
+    file_size: file.size || 0,
+    file_path: filePath,
+    file_url: fileUrl,
+    status: 'pending',
+    created_at: now
+  };
+  const { error: dbErr } = await sb.from('reviewer_submissions').insert(row);
+  if (dbErr) {
+    // Clean up orphaned file if DB insert failed
+    await sb.storage.from('reviewer-submissions').remove([filePath]);
+    return { ok: false, error: dbErr.message || 'Could not record submission.' };
+  }
+  return { ok: true, submission: row };
 };

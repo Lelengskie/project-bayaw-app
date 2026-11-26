@@ -238,7 +238,7 @@ class AgriBoardApp {
   async refreshAdminUsers() {
     await this.fetchLiveLeaderboard();
     this.renderAdminUsersTable();
-    await Promise.all([this.loadAdminAccessCodes(), this.loadAdminAccounts(), this.loadAdminFeedback()]);
+    await Promise.all([this.loadAdminAccessCodes(), this.loadAdminAccounts(), this.loadAdminReviewers(), this.loadAdminFeedback()]);
   }
 
   async adminGenerateAccessCode() {
@@ -317,6 +317,9 @@ class AgriBoardApp {
         const revokedTag = acc.revoked
           ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[9px] uppercase">REVOKED</span>`
           : '';
+        const revSentBadge = (acc.reviewersSent || 0) > 0
+          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/25 border border-indigo-400/50 text-indigo-200 font-bold text-[9px]" title="Reviewers contributed">📄 ${acc.reviewersSent} sent</span>`
+          : '';
 
         const actionBtn = acc.isOwner
           ? `<span class="text-[10px] text-amber-300 font-bold">👑 Owner Protected</span>`
@@ -341,9 +344,10 @@ class AgriBoardApp {
         return `
           <tr>
             <td class="py-2.5">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center flex-wrap gap-1.5">
                 ${statusDot}
                 <span class="font-bold text-white">${this.escapeHtml(acc.name)}</span>
+                ${revSentBadge}
                 ${revokedTag}
               </div>
             </td>
@@ -2268,6 +2272,188 @@ class AgriBoardApp {
   async adminDeleteFeedback(feedbackId) {
     await this.apiCall('POST', { action: 'admin_delete_feedback', feedbackId });
     await this.loadAdminFeedback();
+  }
+
+  // ==================== SUBMIT REVIEWER (.DOCX / .PDF) & OWNER INBOX ====================
+  openSubmitReviewerModal() {
+    const modal = document.getElementById('submit-reviewer-modal');
+    const titleEl = document.getElementById('rev-submit-title');
+    const notesEl = document.getElementById('rev-submit-notes');
+    const fileEl = document.getElementById('rev-submit-file');
+    const infoEl = document.getElementById('rev-submit-file-info');
+    const stEl = document.getElementById('rev-submit-status');
+    if (titleEl) titleEl.value = '';
+    if (notesEl) notesEl.value = '';
+    if (fileEl) fileEl.value = '';
+    if (infoEl) infoEl.classList.add('hidden');
+    if (stEl) stEl.classList.add('hidden');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  closeSubmitReviewerModal() {
+    const modal = document.getElementById('submit-reviewer-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  onReviewerFileSelected() {
+    const fileEl = document.getElementById('rev-submit-file');
+    const infoEl = document.getElementById('rev-submit-file-info');
+    const titleEl = document.getElementById('rev-submit-title');
+    const file = fileEl?.files?.[0];
+    if (!file || !infoEl) return;
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    infoEl.textContent = `Selected: ${file.name} (${sizeMb} MB)`;
+    infoEl.classList.remove('hidden');
+    if (titleEl && !titleEl.value.trim()) {
+      titleEl.value = file.name.replace(/\.(docx|doc|pdf)$/i, '').replace(/[_-]+/g, ' ').slice(0, 100);
+    }
+  }
+
+  async submitReviewerFile() {
+    const area = document.getElementById('rev-submit-area')?.value || 'Mixed / All Areas';
+    const title = (document.getElementById('rev-submit-title')?.value || '').trim();
+    const notes = (document.getElementById('rev-submit-notes')?.value || '').trim();
+    const fileEl = document.getElementById('rev-submit-file');
+    const st = document.getElementById('rev-submit-status');
+    const btn = document.getElementById('btn-submit-reviewer');
+    const file = fileEl?.files?.[0];
+
+    if (!file) {
+      st.textContent = 'Please select a .docx, .doc, or .pdf file first.';
+      st.className = 'text-xs font-semibold text-rose-400';
+      st.classList.remove('hidden');
+      return;
+    }
+
+    const prevTxt = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Uploading...';
+    st.textContent = 'Uploading your reviewer to the Owner Inbox...';
+    st.className = 'text-xs font-semibold text-sky-300';
+    st.classList.remove('hidden');
+
+    try {
+      const res = await window.bayawUploadReviewer(file, {
+        usernameKey: this.user.usernameKey || this.user.name || 'guest',
+        senderName: this.user.name || 'Reviewee',
+        area,
+        title: title || file.name,
+        notes
+      });
+      if (res.ok) {
+        st.textContent = '✅ Uploaded! Thank you for sharing — the Owner can now download it and credit your contribution.';
+        st.className = 'text-xs font-semibold text-emerald-400';
+        setTimeout(() => this.closeSubmitReviewerModal(), 1600);
+      } else {
+        st.textContent = `❌ ${res.error || 'Upload failed. Please try again.'}`;
+        st.className = 'text-xs font-semibold text-rose-400';
+      }
+    } catch (e) {
+      st.textContent = '❌ Upload error. Check your internet connection and try again.';
+      st.className = 'text-xs font-semibold text-rose-400';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevTxt;
+    }
+  }
+
+  async loadAdminReviewers() {
+    const listBox = document.getElementById('admin-reviewers-list');
+    const contribBox = document.getElementById('admin-reviewers-contributors');
+    const pill = document.getElementById('admin-reviewers-storage-pill');
+    if (!listBox || !this.adminPasscode) return;
+    try {
+      const res = await this.apiCall('POST', { action: 'admin_list_reviewers' });
+      const data = await res.json();
+      if (!res.ok) {
+        listBox.innerHTML = `<div class="text-xs text-amber-300 py-2">⚠️ Reviewer submissions table not set up yet in Supabase. Run the setup SQL in Supabase SQL Editor.</div>`;
+        return;
+      }
+
+      const mbUsed = ((data.activeStorageBytes || 0) / (1024 * 1024)).toFixed(2);
+      if (pill) pill.textContent = `${data.activeFilesCount || 0} stored • ${mbUsed} MB / 1,000 MB`;
+
+      // Per-user contributor summary pills with 1-click reward button
+      if (contribBox) {
+        const contribs = data.contributors || [];
+        if (contribs.length === 0) {
+          contribBox.innerHTML = '';
+        } else {
+          contribBox.innerHTML = contribs.map(c => `
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-950/70 border border-indigo-400/40 text-[11px]">
+              <span class="font-bold text-white">${this.escapeHtml(c.senderName)}</span>
+              <span class="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono font-bold text-[10px]">${c.count} sent</span>
+              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(c.usernameKey)}', '${this.escapeHtml(c.senderName)}')" class="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-500/50 border border-emerald-400/40 text-emerald-200 font-bold text-[10px]">🎁 +Days</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      const list = data.reviewers || [];
+      if (list.length === 0) {
+        listBox.innerHTML = `<div class="text-xs text-slate-400 py-2">No reviewers submitted yet. Reviewees can click "📤 Submit Reviewer (.docx)" in the sidebar or mobile chat.</div>`;
+        return;
+      }
+
+      const countByUser = {};
+      (data.contributors || []).forEach(c => { countByUser[c.usernameKey] = c.count; });
+
+      listBox.innerHTML = list.map(r => {
+        const sizeMb = r.fileSize ? `${(r.fileSize / (1024 * 1024)).toFixed(2)} MB` : '—';
+        const userTotal = countByUser[r.usernameKey] || 1;
+        const isFreed = !r.filePath || r.status === 'added';
+        return `
+          <div class="bg-navy-950 border ${isFreed ? 'border-emerald-500/30' : 'border-indigo-500/35'} rounded-xl p-3 flex flex-wrap items-start justify-between gap-3">
+            <div class="space-y-1 min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span class="font-extrabold text-white">${this.escapeHtml(r.senderName)}</span>
+                <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 font-mono font-bold text-[10px]">${userTotal} total sent</span>
+                <span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold text-[10px]">${this.escapeHtml(r.area)}</span>
+                <span class="text-slate-400 font-mono text-[10px]">${sizeMb} • ${new Date(r.createdAt).toLocaleDateString()}</span>
+                ${isFreed ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">✅ Added (File Freed)</span>` : ''}
+              </div>
+              <div class="text-xs font-bold text-sky-200 break-words">📄 ${this.escapeHtml(r.title)} <span class="font-normal text-slate-400">(${this.escapeHtml(r.fileName)})</span></div>
+              ${r.notes ? `<div class="text-[11px] text-slate-300 whitespace-pre-line">${this.escapeHtml(r.notes)}</div>` : ''}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+              ${r.fileUrl ? `<a href="${this.escapeHtml(r.fileUrl)}" target="_blank" download="${this.escapeHtml(r.fileName)}" class="px-2.5 py-1 rounded-lg bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/50 text-sky-200 text-[10px] font-bold">⬇ Download</a>` : ''}
+              ${!isFreed ? `<button onclick="app.adminMarkReviewerAdded('${r.id}')" title="Deletes file from Supabase Storage to free space while keeping the user's contributor count" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-[10px] font-bold">✅ Added & Free Space</button>` : ''}
+              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(r.usernameKey)}', '${this.escapeHtml(r.senderName)}')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-200 text-[10px] font-bold">🎁 Reward Days</button>
+              <button onclick="app.adminDeleteReviewer('${r.id}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-[10px] font-bold">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {}
+  }
+
+  async adminMarkReviewerAdded(reviewerId) {
+    if (!confirm('Mark this reviewer as Added and delete the file from Supabase Storage to free up your 1 GB? (The reviewee\'s contribution count will stay saved!)')) return;
+    await this.apiCall('POST', { action: 'admin_mark_reviewer_added', reviewerId });
+    await Promise.all([this.loadAdminReviewers(), this.loadAdminAccounts()]);
+  }
+
+  async adminDeleteReviewer(reviewerId) {
+    if (!confirm('Delete this submission completely (removes both the file and the count record)?')) return;
+    await this.apiCall('POST', { action: 'admin_delete_reviewer', reviewerId });
+    await Promise.all([this.loadAdminReviewers(), this.loadAdminAccounts()]);
+  }
+
+  async adminQuickRewardReviewer(usernameKey, senderName) {
+    const choice = prompt(`Reward ${senderName} with bonus access days!\nType one of: 1d, 3d, 7d, 14d, 30d, 90d, or unli`, '7d');
+    if (!choice) return;
+    const duration = choice.trim().toLowerCase();
+    if (!['1d', '3d', '7d', '14d', '30d', '90d', 'unli'].includes(duration)) {
+      alert('Please enter one of: 1d, 3d, 7d, 14d, 30d, 90d, or unli');
+      return;
+    }
+    const res = await this.apiCall('POST', { action: 'admin_renew_account', usernameKey, duration });
+    if (res.ok) {
+      await this.loadAdminAccounts();
+      alert(`🎁 Rewarded ${senderName} with +${duration === 'unli' ? 'Unlimited' : duration} access!`);
+    } else {
+      alert(`Could not find account "${senderName}" to reward.`);
+    }
   }
 
   escapeHtml(str) {
