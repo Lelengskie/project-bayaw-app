@@ -592,6 +592,19 @@ class AgriBoardApp {
     }, 60);
   }
 
+  togglePasswordVisibility(inputId, btnId) {
+    const inp = document.getElementById(inputId);
+    const btn = document.getElementById(btnId);
+    if (!inp || !btn) return;
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      btn.textContent = '🙈 Hide';
+    } else {
+      inp.type = 'password';
+      btn.textContent = '👁️ Show';
+    }
+  }
+
   switchAuthTab(mode) {
     this.authMode = mode;
     const loginTab = document.getElementById('auth-tab-login');

@@ -152,7 +152,12 @@
 
         <div class="space-y-1">
           <label class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Password</label>
-          <input id="auth-password-input" type="password" onkeydown="if(event.key==='Enter') app.submitAuth()" placeholder="Enter your password..." class="w-full bg-navy-950 border border-blue-800/80 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-sky-400" />
+          <div class="relative">
+            <input id="auth-password-input" type="password" onkeydown="if(event.key==='Enter') app.submitAuth()" placeholder="Enter your password..." class="w-full bg-navy-950 border border-blue-800/80 rounded-xl pl-4 pr-16 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-sky-400" />
+            <button type="button" id="auth-toggle-pw" onclick="app.togglePasswordVisibility('auth-password-input', 'auth-toggle-pw')" class="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg bg-navy-900 hover:bg-navy-800 border border-blue-900/60 text-[11px] font-bold text-sky-300 transition-all">
+              👁️ Show
+            </button>
+          </div>
         </div>
 
         <div id="auth-promo-banner" class="hidden rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/50 p-3 text-center space-y-0.5">
