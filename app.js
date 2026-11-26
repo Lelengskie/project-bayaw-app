@@ -1071,13 +1071,12 @@ class AgriBoardApp {
         const isActive = (!this.problemSolvingOnly && this.activeStudyArea === area.id && this.activeStudyLevel === lvl);
 
         html += `
-          <button onclick="app.selectStudyLevel(${area.id}, ${lvl})" class="shrink-0 w-40 text-left rounded-xl p-3 ${isActive ? 'level-tile-active' : 'level-tile'}">
-            <div class="text-xs font-extrabold text-white">Area ${area.id} – Level ${lvl}</div>
-            <div class="text-[11px] font-mono text-sky-300 mt-0.5">${start} – ${end}</div>
-            <div class="flex items-center justify-between mt-2.5">
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-navy-950/80 border border-blue-900/60 text-slate-300 font-semibold">${count} items</span>
-              <span class="text-[10px] font-mono font-bold ${lst.pct === 100 ? 'text-emerald-400' : 'text-slate-400'}">${lst.pct.toFixed(0)}%</span>
+          <button onclick="app.selectStudyLevel(${area.id}, ${lvl})" class="shrink-0 w-32 text-left rounded-lg px-2.5 py-1.5 ${isActive ? 'level-tile-active' : 'level-tile'}">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] font-extrabold text-white">A${area.id} • Lv ${lvl}</span>
+              <span class="text-[10px] font-mono font-bold ${lst.pct === 100 ? 'text-emerald-400' : 'text-sky-300'}">${lst.pct.toFixed(0)}%</span>
             </div>
+            <div class="text-[10px] font-mono text-slate-400 mt-0.5">${start}–${end} (${count})</div>
           </button>
         `;
       }
@@ -1087,13 +1086,12 @@ class AgriBoardApp {
       if (ps.total > 0) {
         const isPsActive = (this.problemSolvingOnly && this.activeStudyArea === area.id);
         html += `
-          <button onclick="app.openProblemSolvingMode(${area.id})" class="shrink-0 w-44 text-left rounded-xl p-3 transition-all ${isPsActive ? 'bg-gradient-to-b from-amber-500/30 to-orange-900/50 border-2 border-amber-400 shadow-lg shadow-amber-500/25' : 'bg-amber-950/35 border border-amber-500/40 hover:border-amber-400'}">
-            <div class="text-xs font-extrabold text-amber-300 flex items-center gap-1">🧮 Area-${area.id} Level (PS)</div>
-            <div class="text-[11px] font-mono text-amber-200/80 mt-0.5">Problem Solving</div>
-            <div class="flex items-center justify-between mt-2.5">
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-navy-950/80 border border-amber-500/40 text-amber-200 font-semibold">${ps.total} problems</span>
+          <button onclick="app.openProblemSolvingMode(${area.id})" class="shrink-0 w-36 text-left rounded-lg px-2.5 py-1.5 transition-all ${isPsActive ? 'bg-gradient-to-b from-amber-500/30 to-orange-900/50 border-2 border-amber-400 shadow-lg shadow-amber-500/25' : 'bg-amber-950/35 border border-amber-500/40 hover:border-amber-400'}">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] font-extrabold text-amber-300">🧮 A${area.id} (PS)</span>
               <span class="text-[10px] font-mono font-bold ${ps.pct === 100 ? 'text-emerald-400' : 'text-amber-300'}">${ps.pct.toFixed(0)}%</span>
             </div>
+            <div class="text-[10px] font-mono text-amber-200/75 mt-0.5">${ps.total} problems</div>
           </button>
         `;
       }
