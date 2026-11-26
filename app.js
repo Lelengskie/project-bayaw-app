@@ -331,9 +331,11 @@ class AgriBoardApp {
                 <option value="unli">♾️ Unli</option>
               </select>
               <button onclick="app.adminRenewAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-sky-600/25 hover:bg-sky-600/45 border border-sky-400/50 text-sky-200 text-[11px] font-bold">Renew</button>
+              <button onclick="app.adminResetUserPassword('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-amber-600/25 hover:bg-amber-600/45 border border-amber-400/50 text-amber-200 text-[11px] font-bold">🔑 Reset PW</button>
               ${acc.revoked
                 ? `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-[11px] font-bold">Restore</button>`
                 : `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-600/25 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-[11px] font-bold">Revoke</button>`}
+              <button onclick="app.adminRemoveAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-700 border border-rose-500/60 text-rose-100 text-[11px] font-bold">🗑️ Remove</button>
             </div>`;
 
         return `
@@ -419,6 +421,30 @@ class AgriBoardApp {
       alert(`✅ Renewed ${displayName}'s access (${labelText})!`);
     } else {
       alert('Could not renew account.');
+    }
+  }
+
+  async adminResetUserPassword(usernameKey, displayName) {
+    const newPassword = prompt(`Enter a new temporary password for ${displayName} (at least 4 characters). Their progress will be kept safe:`);
+    if (newPassword === null) return;
+    if (newPassword.length < 4) {
+      alert('Password must be at least 4 characters.');
+      return;
+    }
+    const res = await this.apiCall('POST', { action: 'admin_reset_password', usernameKey, newPassword });
+    if (res.ok) {
+      alert(`✅ Password updated for ${displayName}! You can now send them their new password: ${newPassword}`);
+    } else {
+      alert('Could not reset password.');
+    }
+  }
+
+  async adminRemoveAccount(usernameKey, displayName) {
+    if (!confirm(`PERMANENTLY DELETE ${displayName}'s account? Their username will become available to re-register.`)) return;
+    const res = await this.apiCall('POST', { action: 'admin_delete_user', usernameKey });
+    if (res.ok) {
+      await this.refreshAdminUsers();
+      alert(`🗑️ Removed account "${displayName}". They can now create a fresh account with that username!`);
     }
   }
 

@@ -543,7 +543,23 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
     if (action === 'admin_delete_user') {
       if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
-      await sb.from('accounts').delete().eq('id', body.targetId);
+      if (body.usernameKey) {
+        await sb.from('accounts').delete().eq('username_key', normKey(body.usernameKey));
+      } else if (body.targetId) {
+        await sb.from('accounts').delete().eq('id', body.targetId);
+      }
+      return okRes({ ok: true });
+    }
+
+    if (action === 'admin_reset_password') {
+      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      const key = normKey(body.usernameKey);
+      const newPw = String(body.newPassword || '');
+      if (!key || newPw.length < 4) {
+        return okRes({ ok: false, error: 'New password must be at least 4 characters.' }, 400);
+      }
+      const newHash = await sha256Hex(`bayaw_salt_${key}_${newPw}`);
+      await sb.from('accounts').update({ password_hash: newHash, updated_at: Date.now() }).eq('username_key', key);
       return okRes({ ok: true });
     }
 
