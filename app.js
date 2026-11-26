@@ -563,7 +563,7 @@ class AgriBoardApp {
 
   async init() {
     try {
-      const res = await fetch('./abe_database.json?v=20261127b');
+      const res = await fetch('./abe_database.json?v=20261127c');
       this.db = await res.json();
       this.allItemsFlat = [];
       for (const area of this.db.areas) {
