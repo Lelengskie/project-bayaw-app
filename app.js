@@ -2068,33 +2068,54 @@ class AgriBoardApp {
     } catch (e) {}
   }
 
-  renderGlobalChat(messages) {
-    const box = document.getElementById('global-chat-messages');
-    if (!box) return;
-    if (!messages || messages.length === 0) {
-      box.innerHTML = `<div class="text-slate-500 text-[10px] text-center py-6">No messages yet. Say hi! 👋</div>`;
-      return;
-    }
-    const wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 40;
-    box.innerHTML = messages.map(m => {
-      const badge = m.isOwner
-        ? `<span class="px-1 py-0.2 rounded bg-amber-400 text-navy-950 font-black text-[8px]">OWNER</span>`
-        : (m.title ? `<span class="px-1 rounded bg-sky-500/20 text-sky-300 font-bold text-[8px]">${this.escapeHtml(m.title)}</span>` : '');
-      return `
-        <div class="bg-navy-950/75 border border-blue-900/35 rounded-lg px-2 py-1.5 leading-snug">
-          <div class="flex items-center gap-1 flex-wrap">
-            <span class="font-bold ${m.isOwner ? 'text-amber-300' : 'text-emerald-300'} text-[10px]">${this.escapeHtml(m.name)}</span>
-            ${badge}
-          </div>
-          <div class="text-slate-200 text-[11px] break-words mt-0.5">${this.escapeHtml(m.text)}</div>
-        </div>
-      `;
-    }).join('');
-    if (wasNearBottom) box.scrollTop = box.scrollHeight;
+  openMobileChat() {
+    const modal = document.getElementById('mobile-chat-modal');
+    if (modal) modal.classList.remove('hidden');
+    this.loadGlobalChat();
+    setTimeout(() => {
+      const box = document.getElementById('mobile-chat-messages');
+      if (box) box.scrollTop = box.scrollHeight;
+    }, 100);
   }
 
-  async sendGlobalChat() {
-    const inp = document.getElementById('global-chat-input');
+  closeMobileChat() {
+    const modal = document.getElementById('mobile-chat-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  renderGlobalChat(messages) {
+    const boxes = [
+      document.getElementById('global-chat-messages'),
+      document.getElementById('mobile-chat-messages')
+    ].filter(Boolean);
+    if (boxes.length === 0) return;
+
+    const html = (!messages || messages.length === 0)
+      ? `<div class="text-slate-500 text-[10px] text-center py-6">No messages yet. Say hi! 👋</div>`
+      : messages.map(m => {
+        const badge = m.isOwner
+          ? `<span class="px-1 py-0.2 rounded bg-amber-400 text-navy-950 font-black text-[8px]">OWNER</span>`
+          : (m.title ? `<span class="px-1 rounded bg-sky-500/20 text-sky-300 font-bold text-[8px]">${this.escapeHtml(m.title)}</span>` : '');
+        return `
+          <div class="bg-navy-950/75 border border-blue-900/35 rounded-lg px-2.5 py-1.5 leading-snug">
+            <div class="flex items-center gap-1 flex-wrap">
+              <span class="font-bold ${m.isOwner ? 'text-amber-300' : 'text-emerald-300'} text-[10px]">${this.escapeHtml(m.name)}</span>
+              ${badge}
+            </div>
+            <div class="text-slate-200 text-[11px] break-words mt-0.5">${this.escapeHtml(m.text)}</div>
+          </div>
+        `;
+      }).join('');
+
+    boxes.forEach(box => {
+      const wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 50;
+      box.innerHTML = html;
+      if (wasNearBottom) box.scrollTop = box.scrollHeight;
+    });
+  }
+
+  async sendGlobalChat(source = 'desktop') {
+    const inp = document.getElementById(source === 'mobile' ? 'mobile-chat-input' : 'global-chat-input');
     if (!inp) return;
     const text = (inp.value || '').trim();
     if (!text) return;
@@ -2104,14 +2125,14 @@ class AgriBoardApp {
     }
     inp.value = '';
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (this.adminPasscode) headers['x-admin-passcode'] = this.adminPasscode;
       const res = await this.apiCall('POST', { action: 'chat_send', id: this.user.id, name: this.user.name, text });
       const data = await res.json();
       if (res.ok && Array.isArray(data.messages)) {
         this.renderGlobalChat(data.messages);
-        const box = document.getElementById('global-chat-messages');
-        if (box) box.scrollTop = box.scrollHeight;
+        ['global-chat-messages', 'mobile-chat-messages'].forEach(id => {
+          const b = document.getElementById(id);
+          if (b) b.scrollTop = b.scrollHeight;
+        });
       }
     } catch (e) {}
   }
