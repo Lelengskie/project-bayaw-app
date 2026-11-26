@@ -129,6 +129,146 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       return okRes({ ok: true });
     }
 
+    // 1B. REAL HUMAN-VS-HUMAN 1v1 PvP MATCHMAKING
+    if (action === 'pvp_find_match') {
+      const areaId = Number(body.areaId) || 1;
+      const levelVal = String(body.levelVal || '1');
+      const deckSize = Number(body.deckSize) || 10;
+      const playerId = String(body.playerId || '');
+      const playerName = String(body.playerName || 'Reviewee');
+      const playerRp = Number(body.playerRp) || 1200;
+      const now = Date.now();
+
+      // Clean up stale waiting rooms older than 3 minutes
+      await sb.from('pvp_matches').update({ status: 'cancelled' }).eq('status', 'waiting').lt('created_at', now - 180000);
+
+      // Look for another real reviewee waiting for the exact same Area + Level + Deck Size
+      const { data: waitingList } = await sb
+        .from('pvp_matches')
+        .select('*')
+        .eq('status', 'waiting')
+        .eq('area_id', areaId)
+        .eq('level_val', levelVal)
+        .eq('deck_size', deckSize)
+        .neq('p1_id', playerId)
+        .order('created_at', { ascending: true })
+        .limit(1);
+
+      if (waitingList && waitingList.length > 0) {
+        const room = waitingList[0];
+        const { data: joined, error: joinErr } = await sb
+          .from('pvp_matches')
+          .update({
+            status: 'active',
+            p2_id: playerId,
+            p2_name: playerName,
+            p2_rp: playerRp,
+            p2_remaining: deckSize,
+            p2_cleared: 0,
+            p2_lapses: 0,
+            started_at: now,
+            updated_at: now
+          })
+          .eq('id', room.id)
+          .eq('status', 'waiting')
+          .select()
+          .maybeSingle();
+
+        if (!joinErr && joined) {
+          return okRes({ ok: true, role: 'p2', matched: true, match: joined });
+        }
+      }
+
+      // No waiting opponent found yet — create a waiting room and wait for a real human reviewee!
+      const matchId = `pvp_${now}_${Math.random().toString(36).slice(2, 6)}`;
+      const deckSeed = `BAYAW-${Math.floor(10000 + Math.random() * 90000)}`;
+      const newRoom = {
+        id: matchId,
+        area_id: areaId,
+        level_val: levelVal,
+        deck_size: deckSize,
+        deck_seed: deckSeed,
+        status: 'waiting',
+        p1_id: playerId,
+        p1_name: playerName,
+        p1_rp: playerRp,
+        p1_remaining: deckSize,
+        p1_cleared: 0,
+        p1_lapses: 0,
+        created_at: now,
+        updated_at: now
+      };
+      const { data: created, error: createErr } = await sb.from('pvp_matches').insert(newRoom).select().single();
+      if (createErr) return okRes({ ok: false, error: createErr.message }, 500);
+      return okRes({ ok: true, role: 'p1', matched: false, match: created });
+    }
+
+    if (action === 'pvp_poll_match') {
+      const matchId = String(body.matchId || '');
+      const { data: match, error } = await sb.from('pvp_matches').select('*').eq('id', matchId).maybeSingle();
+      if (error || !match) return okRes({ ok: false, error: 'Match not found' }, 404);
+      return okRes({ ok: true, match });
+    }
+
+    if (action === 'pvp_cancel_match') {
+      const matchId = String(body.matchId || '');
+      if (matchId) {
+        await sb.from('pvp_matches').update({ status: 'cancelled', updated_at: Date.now() }).eq('id', matchId).eq('status', 'waiting');
+      }
+      return okRes({ ok: true });
+    }
+
+    if (action === 'pvp_update_progress') {
+      const matchId = String(body.matchId || '');
+      const role = body.role === 'p2' ? 'p2' : 'p1';
+      const remaining = Math.max(0, Number(body.remaining) || 0);
+      const cleared = Math.max(0, Number(body.cleared) || 0);
+      const lapses = Math.max(0, Number(body.lapses) || 0);
+      const now = Date.now();
+
+      const updates = {
+        [`${role}_remaining`]: remaining,
+        [`${role}_cleared`]: cleared,
+        [`${role}_lapses`]: lapses,
+        updated_at: now
+      };
+
+      if (remaining === 0) {
+        updates[`${role}_finished_at`] = now;
+        const { data: cur } = await sb.from('pvp_matches').select('winner_id,p1_id,p2_id').eq('id', matchId).maybeSingle();
+        if (cur && !cur.winner_id) {
+          updates.winner_id = role === 'p1' ? cur.p1_id : cur.p2_id;
+          updates.status = 'finished';
+        }
+      }
+
+      const { data: updated } = await sb.from('pvp_matches').update(updates).eq('id', matchId).select().maybeSingle();
+      return okRes({ ok: true, match: updated });
+    }
+
+    if (action === 'pvp_forfeit') {
+      const matchId = String(body.matchId || '');
+      const role = body.role === 'p2' ? 'p2' : 'p1';
+      const { data: cur } = await sb.from('pvp_matches').select('winner_id,p1_id,p2_id,status').eq('id', matchId).maybeSingle();
+      if (cur && cur.status === 'active' && !cur.winner_id) {
+        const oppId = role === 'p1' ? cur.p2_id : cur.p1_id;
+        await sb.from('pvp_matches').update({ status: 'finished', winner_id: oppId, updated_at: Date.now() }).eq('id', matchId);
+      }
+      return okRes({ ok: true });
+    }
+
+    if (action === 'pvp_list_waiting') {
+      const now = Date.now();
+      const { data } = await sb
+        .from('pvp_matches')
+        .select('id,area_id,level_val,deck_size,p1_name,p1_rp,created_at')
+        .eq('status', 'waiting')
+        .gt('created_at', now - 180000)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return okRes({ ok: true, waiting: data || [] });
+    }
+
     // 2. USER FEEDBACK / SUGGESTIONS
     if (action === 'feedback_submit') {
       const senderName = String(body.name || 'Anonymous').trim().slice(0, 28);

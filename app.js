@@ -17,8 +17,13 @@ class AgriBoardApp {
     this.isAnswerRevealed = false;
     this.requeueBannerText = '';
 
-    // 1v1 PvP State
+    // 1v1 PvP State (100% Real Human-vs-Human Matchmaking)
     this.pvpActive = false;
+    this.pvpSearching = false;
+    this.pvpMatchId = null;
+    this.pvpRole = null; // 'p1' | 'p2'
+    this.pvpSearchTimerInterval = null;
+    this.pvpPollInterval = null;
     this.pvpPlayerQueue = [];
     this.pvpTotalCards = 10;
     this.pvpClearedCount = 0;
@@ -26,7 +31,6 @@ class AgriBoardApp {
     this.pvpLapses = 0;
     this.pvpStartTime = 0;
     this.pvpTimerInterval = null;
-    this.pvpOppInterval = null;
     this.pvpOpponent = null;
     this.pvpLocked = false;
 
@@ -821,6 +825,7 @@ class AgriBoardApp {
   }
 
   openPvpLobby() {
+    this.cancelFindingMatch();
     this.clearPvpTimers();
     this.pvpActive = false;
     const areaSel = document.getElementById('lobby-pvp-area');
@@ -829,6 +834,7 @@ class AgriBoardApp {
       this.populateLobbyLevels();
     }
     this.showView('pvp-lobby');
+    this.loadWaitingPvpRooms();
   }
 
   populateLobbyLevels() {
@@ -1428,37 +1434,177 @@ class AgriBoardApp {
     this.renderStudyCard();
   }
 
-  // ==================== 1v1 PvP SAME-DECK ANKI RACE ====================
-  startPvpMatch() {
-    this.clearPvpTimers();
-    const deckSizeEl = document.getElementById('quick-pvp-size');
-    const rivalEl = document.getElementById('quick-pvp-rival');
+  // ==================== 1v1 PvP REAL HUMAN-VS-HUMAN MATCHMAKING ====================
+  seededRng(seedStr) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      h ^= seedStr.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return () => {
+      h += h << 13; h ^= h >>> 7;
+      h += h << 3;  h ^= h >>> 17;
+      h += h << 5;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+
+  async loadWaitingPvpRooms() {
+    const listEl = document.getElementById('pvp-waiting-list');
+    if (!listEl) return;
+    try {
+      const res = await this.apiCall('POST', { action: 'pvp_list_waiting' });
+      const data = await res.json();
+      const rooms = (data.waiting || []).filter(r => r.p1_name !== this.user.name);
+      if (rooms.length === 0) {
+        listEl.innerHTML = `<div class="text-slate-400 text-[11px]">No other reviewees waiting right now. Click <strong>Find Match</strong> above to open a room!</div>`;
+        return;
+      }
+      listEl.innerHTML = rooms.map(r => {
+        const lvlTxt = r.level_val === 'ps' ? `Area-${r.area_id} Level (PS)` : `Area ${r.area_id} • Level ${r.level_val}`;
+        return `
+          <div class="flex items-center justify-between gap-2 bg-navy-900/90 border border-purple-500/35 rounded-lg px-3 py-2">
+            <div>
+              <div class="text-xs font-bold text-white">${this.escapeHtml(r.p1_name)} <span class="text-[10px] font-mono text-amber-300">(${r.p1_rp || 1200} RP)</span></div>
+              <div class="text-[10px] text-sky-300">${lvlTxt} • ${r.deck_size} Cards</div>
+            </div>
+            <button onclick="app.joinWaitingPvpRoom(${r.area_id}, '${r.level_val}', ${r.deck_size})" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-extrabold">
+              ⚔️ Accept Duel
+            </button>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {}
+  }
+
+  joinWaitingPvpRoom(areaId, levelVal, deckSize) {
     const areaSel = document.getElementById('lobby-pvp-area');
     const lvlSel = document.getElementById('lobby-pvp-level');
-    const deckSize = deckSizeEl ? parseInt(deckSizeEl.value, 10) : 10;
-    const rivalMode = rivalEl ? rivalEl.value : 'auto';
-    const chosenArea = areaSel ? parseInt(areaSel.value, 10) : (this.activeStudyArea || 1);
-    const chosenLvlVal = lvlSel ? lvlSel.value : String(this.activeStudyLevel || 1);
+    const sizeSel = document.getElementById('quick-pvp-size');
+    if (areaSel) {
+      areaSel.value = String(areaId);
+      this.populateLobbyLevels();
+    }
+    if (lvlSel) lvlSel.value = String(levelVal);
+    if (sizeSel) sizeSel.value = String(deckSize);
+    this.startFindingMatch();
+  }
 
-    // Pull same-deck pool from the Lobby's chosen Area & Level (or PS Level)
+  async startFindingMatch() {
+    if (!this.user.loggedIn) {
+      this.openAuthModal('login');
+      return;
+    }
+    this.clearPvpTimers();
+    const areaId = parseInt(document.getElementById('lobby-pvp-area')?.value || '1', 10);
+    const levelVal = String(document.getElementById('lobby-pvp-level')?.value || '1');
+    const deckSize = parseInt(document.getElementById('quick-pvp-size')?.value || '10', 10);
+
+    document.getElementById('pvp-lobby-settings').classList.add('hidden');
+    document.getElementById('pvp-searching-box').classList.remove('hidden');
+    const lvlLabel = levelVal === 'ps' ? `Area-${areaId} Level (PS)` : `Area ${areaId} • Level ${levelVal}`;
+    document.getElementById('pvp-search-desc').textContent = `Looking for a real reviewee in ${lvlLabel} (${deckSize} Cards)...`;
+
+    // Start live "Finding Match" stopwatch timer
+    this.pvpSearching = true;
+    const searchStart = Date.now();
+    document.getElementById('pvp-search-timer').textContent = '00:00';
+    this.pvpSearchTimerInterval = setInterval(() => {
+      const sec = Math.floor((Date.now() - searchStart) / 1000);
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      const el = document.getElementById('pvp-search-timer');
+      if (el) el.textContent = `${m}:${s}`;
+    }, 500);
+
+    try {
+      const res = await this.apiCall('POST', {
+        action: 'pvp_find_match',
+        areaId,
+        levelVal,
+        deckSize,
+        playerId: this.user.id,
+        playerName: this.user.name,
+        playerRp: this.user.rp || 1200
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok || !data.match) {
+        alert(data.error || 'Could not start matchmaking. Make sure the pvp_matches table was created in Supabase!');
+        this.cancelFindingMatch();
+        return;
+      }
+
+      this.pvpMatchId = data.match.id;
+      this.pvpRole = data.role;
+
+      if (data.matched && data.match.status === 'active') {
+        this.launchRealPvpArena(data.match);
+        return;
+      }
+
+      // Poll Supabase every 1.5s until another real reviewee joins our waiting room
+      this.pvpPollInterval = setInterval(async () => {
+        if (!this.pvpSearching || !this.pvpMatchId) return;
+        try {
+          const pr = await this.apiCall('POST', { action: 'pvp_poll_match', matchId: this.pvpMatchId });
+          const pd = await pr.json();
+          if (pr.ok && pd.match) {
+            if (pd.match.status === 'active' && pd.match.p2_id) {
+              this.launchRealPvpArena(pd.match);
+            } else if (pd.match.status === 'cancelled') {
+              this.cancelFindingMatch();
+            }
+          }
+        } catch (e) {}
+      }, 1500);
+    } catch (err) {
+      alert('Network error starting matchmaking.');
+      this.cancelFindingMatch();
+    }
+  }
+
+  async cancelFindingMatch() {
+    this.pvpSearching = false;
+    if (this.pvpSearchTimerInterval) clearInterval(this.pvpSearchTimerInterval);
+    if (this.pvpPollInterval) clearInterval(this.pvpPollInterval);
+    if (this.pvpMatchId && !this.pvpActive) {
+      const idToCancel = this.pvpMatchId;
+      this.pvpMatchId = null;
+      try {
+        await this.apiCall('POST', { action: 'pvp_cancel_match', matchId: idToCancel });
+      } catch (e) {}
+    }
+    const settings = document.getElementById('pvp-lobby-settings');
+    const searching = document.getElementById('pvp-searching-box');
+    if (settings) settings.classList.remove('hidden');
+    if (searching) searching.classList.add('hidden');
+    this.loadWaitingPvpRooms();
+  }
+
+  launchRealPvpArena(match) {
+    this.pvpSearching = false;
+    this.clearPvpTimers();
+
+    // Build exact same shuffled deck for both real players using match.deck_seed
     let pool = [];
     let deckLabel = '';
-    if (chosenLvlVal === 'ps') {
-      pool = [...this.getPsItems(chosenArea)];
-      deckLabel = `Area-${chosenArea} Level (PS)`;
+    if (match.level_val === 'ps') {
+      pool = [...this.getPsItems(match.area_id)];
+      deckLabel = `Area-${match.area_id} Level (PS)`;
     } else {
-      const lvlNum = parseInt(chosenLvlVal, 10) || 1;
-      const lst = this.getLevelStats(chosenArea, lvlNum);
+      const lvlNum = parseInt(match.level_val, 10) || 1;
+      const lst = this.getLevelStats(match.area_id, lvlNum);
       pool = [...lst.items];
-      deckLabel = `Area ${chosenArea} • Level ${lvlNum}`;
+      deckLabel = `Area ${match.area_id} • Level ${lvlNum}`;
     }
 
+    const rng = this.seededRng(match.deck_seed);
     for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    const sharedDeck = pool.slice(0, Math.min(deckSize, pool.length));
+    const sharedDeck = pool.slice(0, Math.min(match.deck_size, pool.length));
     this.pvpPlayerQueue = [...sharedDeck];
     this.pvpTotalCards = sharedDeck.length;
     this.pvpClearedCount = 0;
@@ -1467,27 +1613,24 @@ class AgriBoardApp {
     this.pvpLocked = false;
     this.pvpActive = true;
 
-    const rivals = {
-      cadet: { name: 'Engr. Marco (Cadet)', rp: 1050, avgSec: 6.0, acc: 0.80 },
-      registered: { name: 'DeckBolt (Diamond)', rp: 1380, avgSec: 4.4, acc: 0.88 },
-      topnotcher: { name: 'AnkiRacer (Legend)', rp: 1750, avgSec: 3.3, acc: 0.94 }
-    };
-    let chosen = rivals[rivalMode];
-    if (!chosen) {
-      chosen = this.user.rp >= 1500 ? rivals.topnotcher : (this.user.rp >= 1220 ? rivals.registered : rivals.cadet);
-    }
-
+    const oppIsP1 = (this.pvpRole === 'p2');
     this.pvpOpponent = {
-      ...chosen,
+      id: oppIsP1 ? match.p1_id : match.p2_id,
+      name: oppIsP1 ? match.p1_name : match.p2_name,
+      rp: oppIsP1 ? (match.p1_rp || 1200) : (match.p2_rp || 1200),
       remaining: sharedDeck.length,
       cleared: 0,
       lapses: 0,
-      status: 'Reviewing Card #1...'
+      status: 'Live Opponent Connected!'
     };
 
-    const seedCode = 'BAYAW-' + Math.floor(1000 + Math.random() * 9000);
+    const settings = document.getElementById('pvp-lobby-settings');
+    const searching = document.getElementById('pvp-searching-box');
+    if (settings) settings.classList.remove('hidden');
+    if (searching) searching.classList.add('hidden');
+
     document.getElementById('pvp-arena-deck-label').textContent = `${deckLabel} (${this.pvpTotalCards} Cards)`;
-    document.getElementById('pvp-arena-seed-badge').textContent = `Deck Seed: ${seedCode}`;
+    document.getElementById('pvp-arena-seed-badge').textContent = `Shared Deck: ${match.deck_seed}`;
     document.getElementById('pvp-you-name').textContent = `YOU (${this.user.name})`;
     document.getElementById('pvp-opp-name').textContent = `${this.pvpOpponent.name} • ${this.pvpOpponent.rp} RP`;
     document.getElementById('pvp-result-box').classList.add('hidden');
@@ -1507,29 +1650,51 @@ class AgriBoardApp {
       document.getElementById('pvp-timer').textContent = `${String(m).padStart(2, '0')}:${s.padStart(4, '0')}`;
     }, 100);
 
-    this.scheduleNextOpponentMove();
+    // Poll real human opponent's live progress every 1.2s
+    this.pvpPollInterval = setInterval(async () => {
+      if (!this.pvpActive || !this.pvpMatchId) return;
+      try {
+        const res = await this.apiCall('POST', { action: 'pvp_poll_match', matchId: this.pvpMatchId });
+        const data = await res.json();
+        if (!res.ok || !data.match) return;
+        const m = data.match;
+        const oppRem = oppIsP1 ? m.p1_remaining : m.p2_remaining;
+        const oppClr = oppIsP1 ? m.p1_cleared : m.p2_cleared;
+        const oppLap = oppIsP1 ? m.p1_lapses : m.p2_lapses;
+
+        if (oppLap > this.pvpOpponent.lapses) {
+          this.pvpOpponent.status = '❌ Lapsed! Card cycled back';
+        } else if (oppClr > this.pvpOpponent.cleared) {
+          this.pvpOpponent.status = `Cleared ${oppClr}/${this.pvpTotalCards}!`;
+        }
+        this.pvpOpponent.remaining = oppRem ?? this.pvpTotalCards;
+        this.pvpOpponent.cleared = oppClr || 0;
+        this.pvpOpponent.lapses = oppLap || 0;
+        this.updatePvpScoreboard();
+
+        if (m.status === 'finished' && m.winner_id) {
+          this.finishPvpMatch(m.winner_id === this.user.id);
+        }
+      } catch (e) {}
+    }, 1200);
   }
 
-  scheduleNextOpponentMove() {
-    if (!this.pvpActive || this.pvpOpponent.remaining <= 0) return;
-    const delayMs = this.pvpOpponent.avgSec * (0.72 + Math.random() * 0.6) * 1000;
-    this.pvpOppInterval = setTimeout(() => {
-      if (!this.pvpActive) return;
-      if (Math.random() <= this.pvpOpponent.acc) {
-        this.pvpOpponent.remaining--;
-        this.pvpOpponent.cleared++;
-        this.pvpOpponent.status = `Cleared ${this.pvpOpponent.cleared}/${this.pvpTotalCards}`;
-      } else {
-        this.pvpOpponent.lapses++;
-        this.pvpOpponent.status = '❌ Lapsed! Card cycled back';
+  async syncMyPvpProgress() {
+    if (!this.pvpMatchId || !this.pvpRole) return;
+    try {
+      const res = await this.apiCall('POST', {
+        action: 'pvp_update_progress',
+        matchId: this.pvpMatchId,
+        role: this.pvpRole,
+        remaining: this.pvpPlayerQueue.length,
+        cleared: this.pvpClearedCount,
+        lapses: this.pvpLapses
+      });
+      const data = await res.json();
+      if (res.ok && data.match && data.match.status === 'finished' && data.match.winner_id) {
+        this.finishPvpMatch(data.match.winner_id === this.user.id);
       }
-      this.updatePvpScoreboard();
-      if (this.pvpOpponent.remaining <= 0) {
-        this.finishPvpMatch(false);
-      } else {
-        this.scheduleNextOpponentMove();
-      }
-    }, delayMs);
+    } catch (e) {}
   }
 
   updatePvpScoreboard() {
@@ -1585,6 +1750,7 @@ class AgriBoardApp {
       this.user.srs[card.id] = { status: 'mastered', interval: 3, due: Date.now() + 3 * 86400000, reps: (this.user.srs[card.id]?.reps || 0) + 1 };
       this.saveUserState();
       this.updatePvpScoreboard();
+      this.syncMyPvpProgress();
       if (this.pvpPlayerQueue.length === 0) this.finishPvpMatch(true);
       else this.renderPvpCard();
     } else {
@@ -1593,9 +1759,10 @@ class AgriBoardApp {
       this.pvpLapses++;
       const missed = this.pvpPlayerQueue.shift();
       this.pvpPlayerQueue.push(missed);
-      this.user.srs[card.id] = { status: 'learning', interval: 0, due: Date.now(), reps: 0 };
+      this.user.srs[card.id] = { status: 'learning', lastRating: 'again', interval: 0, due: Date.now(), reps: 0 };
       this.saveUserState();
       this.updatePvpScoreboard();
+      this.syncMyPvpProgress();
 
       const overlay = document.getElementById('pvp-penalty-overlay');
       document.getElementById('pvp-penalty-correct').textContent = card.answer;
@@ -1654,7 +1821,13 @@ class AgriBoardApp {
     document.getElementById('pvp-res-accuracy').textContent = `${acc}%`;
   }
 
-  forfeitPvpMatch() {
+  async forfeitPvpMatch() {
+    if (this.pvpActive && this.pvpMatchId && this.pvpRole) {
+      try {
+        await this.apiCall('POST', { action: 'pvp_forfeit', matchId: this.pvpMatchId, role: this.pvpRole });
+      } catch (e) {}
+      this.finishPvpMatch(false);
+    }
     this.pvpActive = false;
     this.clearPvpTimers();
     this.openPvpLobby();
@@ -1662,7 +1835,8 @@ class AgriBoardApp {
 
   clearPvpTimers() {
     if (this.pvpTimerInterval) clearInterval(this.pvpTimerInterval);
-    if (this.pvpOppInterval) clearTimeout(this.pvpOppInterval);
+    if (this.pvpSearchTimerInterval) clearInterval(this.pvpSearchTimerInterval);
+    if (this.pvpPollInterval) clearInterval(this.pvpPollInterval);
   }
 
   // ==================== LEADERBOARDS (SIDEBAR + FULL VIEW) ====================

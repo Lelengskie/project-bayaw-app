@@ -910,45 +910,62 @@
               </div>
             </div>
 
-            <!-- Right: Match Settings & Find Match Button -->
+            <!-- Right: Match Settings & Real Human Matchmaking -->
             <div class="lg:col-span-7 space-y-4">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">1. Choose Area</label>
-                  <select id="lobby-pvp-area" onchange="app.populateLobbyLevels()" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
-                    <option value="1">Area 1: Power, Energy & Machinery</option>
-                    <option value="2">Area 2: Land & Water Resources</option>
-                    <option value="3">Area 3: Structures, Env. & Bioprocess</option>
-                  </select>
+              <div id="pvp-lobby-settings" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">1. Choose Area</label>
+                    <select id="lobby-pvp-area" onchange="app.populateLobbyLevels()" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
+                      <option value="1">Area 1: Power & Machinery</option>
+                      <option value="2">Area 2: Land & Water</option>
+                      <option value="3">Area 3: Structures & Bioprocess</option>
+                    </select>
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">2. 100-Item Level</label>
+                    <select id="lobby-pvp-level" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-sky-300">
+                      <option value="1">Level 1 (1 – 100)</option>
+                    </select>
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">3. Deck Size</label>
+                    <select id="quick-pvp-size" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
+                      <option value="10">10-Card Blitz</option>
+                      <option value="20">20-Card Standard</option>
+                      <option value="50">50-Card Marathon</option>
+                    </select>
+                  </div>
                 </div>
-                <div class="space-y-1.5">
-                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">2. Choose 100-Item Level</label>
-                  <select id="lobby-pvp-level" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-sky-300">
-                    <option value="1">Level 1 (1 – 100)</option>
-                  </select>
-                </div>
-                <div class="space-y-1.5">
-                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">3. Deck Size</label>
-                  <select id="quick-pvp-size" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
-                    <option value="10">10-Card Blitz (~1 min)</option>
-                    <option value="20">20-Card Standard (~2 min)</option>
-                    <option value="50">50-Card Marathon (~5 min)</option>
-                  </select>
-                </div>
-                <div class="space-y-1.5">
-                  <label class="text-[11px] font-bold uppercase tracking-wider text-purple-300">4. Opponent Pace</label>
-                  <select id="quick-pvp-rival" class="w-full bg-navy-950 border border-purple-500/35 rounded-xl px-3 py-2.5 text-xs font-bold text-white">
-                    <option value="auto">Auto Ranked Rival</option>
-                    <option value="cadet">Cadet Pace (1,050 RP)</option>
-                    <option value="registered">Board Pace (1,380 RP)</option>
-                    <option value="topnotcher">Topnotcher (1,750 RP)</option>
-                  </select>
-                </div>
+
+                <button onclick="app.startFindingMatch()" class="w-full py-4 rounded-xl btn-find-match text-white font-extrabold text-base flex items-center justify-center gap-2 transition-all">
+                  <span>🔍</span> Find Match <span class="text-xs font-normal opacity-90">(Match with Real Reviewee)</span>
+                </button>
               </div>
 
-              <button onclick="app.startPvpMatch()" class="w-full py-4 rounded-xl btn-find-match text-white font-extrabold text-base flex items-center justify-center gap-2 transition-all">
-                <span>🔍</span> Find Match <span class="text-xs font-normal opacity-90">(Start 1v1 Same-Deck Race)</span>
-              </button>
+              <!-- Live Finding Match Timer Box (Hidden until Find Match is clicked) -->
+              <div id="pvp-searching-box" class="hidden rounded-2xl bg-navy-950/90 border-2 border-purple-400/60 p-6 text-center space-y-4 shadow-xl shadow-purple-900/30">
+                <div class="w-12 h-12 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin mx-auto"></div>
+                <div class="space-y-1">
+                  <div class="text-base font-extrabold text-white">🔍 Finding Real Reviewee Opponent...</div>
+                  <div id="pvp-search-timer" class="text-2xl font-mono font-black text-amber-300">00:00</div>
+                  <p id="pvp-search-desc" class="text-xs text-slate-300">Waiting for another reviewee with the same Area, Level & Deck Size...</p>
+                </div>
+                <button onclick="app.cancelFindingMatch()" class="px-5 py-2 rounded-xl bg-rose-600/25 hover:bg-rose-600/45 border border-rose-400/50 text-rose-200 text-xs font-bold">
+                  ✕ Cancel Matchmaking
+                </button>
+              </div>
+
+              <!-- Live Open Waiting Challenges (Join Another Real Reviewee in 1 Click!) -->
+              <div class="rounded-xl bg-navy-950/70 border border-purple-500/25 p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-purple-300">🟢 Real Reviewees Waiting for a 1v1 Duel</span>
+                  <button onclick="app.loadWaitingPvpRooms()" class="text-[11px] text-sky-300 hover:underline font-bold">↻ Refresh</button>
+                </div>
+                <div id="pvp-waiting-list" class="space-y-1.5 text-xs text-slate-400">
+                  No open challenges yet. Click <strong>Find Match</strong> above to open one!
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1042,7 +1059,7 @@
             </div>
           </div>
           <div class="flex justify-center gap-3 pt-2">
-            <button onclick="app.startPvpMatch()" class="px-6 py-2.5 rounded-xl btn-find-match text-white font-extrabold text-xs">⚔️ Rematch</button>
+            <button onclick="app.openPvpLobby()" class="px-6 py-2.5 rounded-xl btn-find-match text-white font-extrabold text-xs">⚔️ Back to 1v1 Lobby</button>
             <button onclick="app.showView('dashboard')" class="px-6 py-2.5 rounded-xl bg-navy-800 hover:bg-navy-700 text-white font-bold text-xs">← Back to Dashboard</button>
           </div>
         </div>
