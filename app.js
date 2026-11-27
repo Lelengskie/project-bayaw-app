@@ -1649,7 +1649,7 @@ class AgriBoardApp {
     if (others.length > 0) {
       parts.push(`
         <details class="rounded-lg bg-navy-950/75 border border-blue-900/50 px-3 py-2 text-xs">
-          <summary class="cursor-pointer font-bold text-sky-300 select-none">▾ See why the other ${others.length === 1 ? 'choice is' : 'choices are'} wrong (${others.length})</summary>
+          <summary class="cursor-pointer font-bold text-sky-300 select-none">See why the other ${others.length === 1 ? 'choice is' : 'choices are'} wrong (${others.length})</summary>
           <div class="space-y-1.5 pt-2">
             ${others.map(ch => `
               <div class="text-slate-300 leading-relaxed">
@@ -1661,7 +1661,8 @@ class AgriBoardApp {
       `);
     }
 
-    return parts.length ? `<div class="space-y-2 pt-1.5">${parts.join('')}</div>` : '';
+    // whitespace-normal: the rationale box keeps line breaks (pre-line), which would turn this markup's newlines into blank lines
+    return parts.length ? `<div class="space-y-2 pt-1.5 whitespace-normal">${parts.join('')}</div>` : '';
   }
 
   revealStudyAnswer(chosenAnswer = null) {
@@ -1818,7 +1819,7 @@ class AgriBoardApp {
       }
 
       if (isCur) {
-        cls += ' ring-2 ring-white scale-110 z-10 shadow-md';
+        cls += ' ring-2 ring-inset ring-white'; // inset so the scroll box doesn't clip it
       }
       return `
         <button onclick="app.jumpToStudyCard(${idx})" class="h-6 rounded text-xs font-mono transition-all ${cls}" title="${this.problemSolvingOnly || this.drillLabel ? 'Question ' + (idx + 1) : 'Item #' + it.index}">
