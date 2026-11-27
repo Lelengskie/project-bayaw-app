@@ -346,6 +346,9 @@
         <button id="topnav-prob" onclick="app.openProblemSolvingMode(1)" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/30">
           <span>🧮</span> Problem Solving
         </button>
+        <button id="topnav-mock-exam" onclick="bayawMock.openLobby()" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/35">
+          <span>📝</span> Mock Exam
+        </button>
         <button id="topnav-pvp" onclick="app.openPvpLobby()" class="topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80">
           <span>⚔️</span> 1v1 PvP
         </button>
@@ -442,6 +445,11 @@
           </button>
         </div>
       </div>
+
+      <button id="side-mock-exam" onclick="bayawMock.openLobby()" class="side-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/35 transition-all">
+        <span class="flex items-center gap-2"><span>📝</span> PRC Mock Exam</span>
+        <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-200">TOS</span>
+      </button>
 
       <button id="side-pvp" onclick="app.openPvpLobby()" class="side-btn w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white sidebar-pvp-glow hover:brightness-110 transition-all">
         <span>⚔️</span> 1v1 PvP <span class="text-[10px] text-purple-200 font-normal">(Lobby)</span>
@@ -1440,39 +1448,171 @@
         </div>
       </div>
 
+      <!-- ==================== PRC ABELE MOCK EXAM SIMULATOR VIEW ==================== -->
+      <div id="view-mock-exam" class="hidden space-y-5">
+
+        <!-- LOBBY PANEL -->
+        <div id="mock-lobby-panel" class="space-y-5">
+          <div class="panel p-5 sm:p-6 border border-emerald-500/35 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="space-y-1.5">
+                <div id="mock-access-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/45 text-[11px] font-extrabold text-sky-200">
+                  ⚡ 50-Item Quick Mocks FREE • Full 100-Item Board Mock is Owner-Granted
+                </div>
+                <h1 class="text-xl sm:text-2xl font-black text-white">📝 PRC ABELE Mock Exam Simulator (RA 10915)</h1>
+                <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                  Constructed using the official <strong>PRC Board of ABE Table of Specifications (TOS)</strong> weights — Area 1 (<strong>32%</strong>), Area 2 (<strong>32%</strong>), Area 3 (<strong>36%</strong>) — with authentic per-Area timers, <strong>≥ 70% GWA passing</strong>, and <strong>≥ 50% subject floor</strong> grading.
+                </p>
+              </div>
+              <div class="flex flex-col items-start sm:items-end gap-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Timer Mode</span>
+                <div class="flex items-center gap-1.5">
+                  <button id="mock-mode-strict" onclick="bayawMock.toggleStrictMode(true)" class="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-extrabold shadow">⏱️ Strict Board (No Pause)</button>
+                  <button id="mock-mode-practice" onclick="bayawMock.toggleStrictMode(false)" class="px-3 py-1.5 rounded-lg bg-navy-900 border border-blue-900/50 text-slate-300 text-xs font-bold">⏸ Practice Timed</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resume Unfinished Exam Banner -->
+          <div id="mock-resume-banner" class="hidden panel p-4 border border-amber-400/50 bg-amber-950/25"></div>
+
+          <!-- FREE TIER: 50-Item Quick Mock per Area -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-extrabold text-emerald-300">⚡ 50-Item Quick Mock (Free For All Reviewees)</h2>
+              <span class="text-[11px] text-slate-400">PRC TOS-weighted • Half-length timer</span>
+            </div>
+            <div id="mock-quick-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3.5"></div>
+          </div>
+
+          <!-- OWNER-GRANTED TIER: Full 100-Item PRC Board Exam & 3-Area Run -->
+          <div class="panel p-5 border border-amber-500/40 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-extrabold text-amber-300">🏆 Full 100-Item PRC Board Exam & 3-Area GWA Run</h2>
+                <p class="text-xs text-slate-400">Complete Area 1 (4h), Area 2 (5h), and Area 3 (6h) at your own pace to receive your Official PRC-Style Report of Rating.</p>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-[10px] font-black text-amber-300">OWNER-GRANTED</span>
+            </div>
+            <div id="mock-full-panel"></div>
+          </div>
+
+          <!-- Past Mock History -->
+          <div class="panel p-5 space-y-3">
+            <h2 class="text-sm font-extrabold text-sky-300">📈 Your Recent Mock Exam History</h2>
+            <div id="mock-history-list" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- ACTIVE EXAM ARENA PANEL -->
+        <div id="mock-arena-panel" class="hidden space-y-4">
+          <div class="panel p-3.5 sm:p-4 border border-sky-500/40 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30">
+            <div>
+              <div id="mock-arena-title" class="text-sm font-extrabold text-white">Area 1 — PRC Mock Exam</div>
+              <div id="mock-arena-progress" class="text-xs font-mono text-slate-400">Answered 0 / 50</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="px-3.5 py-1.5 rounded-xl bg-navy-950 border border-sky-500/40 flex items-center gap-1.5">
+                <span class="text-xs">⏱️</span>
+                <span id="mock-timer-text" class="font-mono text-sm font-black text-emerald-300">02:00:00</span>
+              </div>
+              <button id="mock-pause-btn" onclick="bayawMock.togglePause()" class="hidden px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-slate-200">⏸ Pause</button>
+              <button onclick="bayawMock.submitExam(false)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow">Submit Exam</button>
+              <button onclick="bayawMock.exitToLobby()" class="px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 border border-blue-900/60 text-slate-300 text-xs font-bold">Save & Exit</button>
+            </div>
+          </div>
+
+          <div class="relative grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            <div id="mock-pause-overlay" class="hidden absolute inset-0 z-20 rounded-2xl bg-navy-950/95 backdrop-blur-md flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <div class="text-3xl">⏸️</div>
+              <div class="text-base font-extrabold text-white">Exam Paused</div>
+              <button onclick="bayawMock.togglePause()" class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-extrabold">▶ Resume Exam</button>
+            </div>
+
+            <div class="lg:col-span-8 panel p-5 sm:p-6 border border-blue-900/50 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-blue-900/50">
+                <span id="mock-q-meta" class="text-xs font-bold text-slate-300">Question 1 / 50</span>
+                <button id="mock-flag-btn" onclick="bayawMock.toggleFlag()" class="px-3 py-1 rounded-lg bg-navy-900 border border-blue-900/60 text-[11px] font-bold text-slate-300">🏳️ Flag for Review</button>
+              </div>
+              <div id="mock-q-text" class="text-sm sm:text-base font-bold text-white leading-relaxed whitespace-pre-line"></div>
+              <div id="mock-q-images" class="hidden space-y-2"></div>
+              <div id="mock-q-choices" class="space-y-2.5"></div>
+              <div class="flex items-center justify-between pt-3 border-t border-blue-900/50">
+                <button onclick="bayawMock.nav(-1)" class="px-4 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-bold text-slate-200">← Previous</button>
+                <button onclick="bayawMock.nav(1)" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white shadow">Next →</button>
+              </div>
+            </div>
+
+            <div class="lg:col-span-4 panel p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-xs font-extrabold text-white">📋 Scantron Navigator</h3>
+                <div class="flex items-center gap-2 text-[10px]">
+                  <span class="text-emerald-300">■ Done</span>
+                  <span class="text-amber-300">■ Flag</span>
+                </div>
+              </div>
+              <div id="mock-nav-grid" class="grid grid-cols-5 sm:grid-cols-8 lg:grid-cols-5 gap-1.5 max-h-96 overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESULTS & PRC REPORT OF RATING PANEL -->
+        <div id="mock-results-panel" class="hidden space-y-5">
+          <div id="mock-result-scorecard" class="panel p-6 sm:p-8 border border-emerald-500/45 text-center shadow-2xl"></div>
+          <div class="flex flex-wrap justify-center gap-2.5">
+            <button onclick="bayawMock.openLobby()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold shadow">← Back to Mock Exam Lobby</button>
+          </div>
+          <div id="mock-result-tos"></div>
+          <div id="mock-result-review-section" class="panel p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-extrabold text-white">📖 Solution Review (KaTeX Verified Rationales)</h3>
+              <div class="flex items-center gap-1.5">
+                <button id="mock-rev-tab-missed" onclick="bayawMock.setReviewFilter('missed')" class="px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-extrabold">Missed</button>
+                <button id="mock-rev-tab-flagged" onclick="bayawMock.setReviewFilter('flagged')" class="px-3 py-1.5 rounded-lg bg-navy-900 border border-blue-900/50 text-slate-300 text-xs font-bold">Flagged</button>
+                <button id="mock-rev-tab-all" onclick="bayawMock.setReviewFilter('all')" class="px-3 py-1.5 rounded-lg bg-navy-900 border border-blue-900/50 text-slate-300 text-xs font-bold">All Items</button>
+              </div>
+            </div>
+            <div id="mock-result-review-list" class="space-y-3"></div>
+          </div>
+        </div>
+
+      </div>
+
     </main>
   </div>
 
   <!-- MOBILE BOTTOM NAVIGATION BAR (OPTIMIZED FOR PHONES WITH GLOBAL CHAT) -->
   <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-emerald-500/30 px-1.5 py-1.5 flex items-center justify-around">
-    <button onclick="app.showView('dashboard')" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-sky-300">
+    <button onclick="app.showView('dashboard')" class="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-bold text-sky-300">
       <span class="text-base">🏠</span>
       <span>Study</span>
     </button>
-    <button onclick="app.openProblemSolvingMode(1)" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-amber-300">
+    <button onclick="bayawMock.openLobby()" class="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-bold text-emerald-300">
+      <span class="text-base">📝</span>
+      <span>Mock</span>
+    </button>
+    <button onclick="app.openProblemSolvingMode(1)" class="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-bold text-amber-300">
       <span class="text-base">🧮</span>
       <span>PS Math</span>
     </button>
-    <button onclick="app.openPvpLobby()" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-purple-300">
+    <button onclick="app.openPvpLobby()" class="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-bold text-purple-300">
       <span class="text-base">⚔️</span>
       <span>1v1 PvP</span>
     </button>
-    <button onclick="app.openMobileChat()" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-emerald-300">
+    <button onclick="app.openMobileChat()" class="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-bold text-teal-300">
       <span class="text-base">💬</span>
       <span>Chat</span>
     </button>
-    <button onclick="app.showView('leaderboards')" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-amber-200">
-      <span class="text-base">🏆</span>
-      <span>Ranks</span>
-    </button>
-    <button onclick="app.openAdminPanel()" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-amber-400">
+    <button onclick="app.openAdminPanel()" class="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-bold text-amber-400">
       <span class="text-base">👑</span>
       <span>Owner</span>
     </button>
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-api.js?v=20261127k"></script>
-  <script src="./app.js?v=20261127k"></script>
+  <script src="./supabase-api.js?v=20261127m"></script>
+  <script src="./app.js?v=20261127m"></script>
+  <script src="./mock-exam.js?v=20261127m"></script>
 </body>
 </html>

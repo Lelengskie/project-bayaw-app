@@ -464,12 +464,34 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
         user: {
           id: acc.id, usernameKey: acc.username_key, name: acc.name,
           isOwner: !!acc.is_owner, title: acc.title || '',
+          fullMockAccess: !!(acc.full_mock_access || acc.is_owner),
+          mockHistory: Array.isArray(acc.mock_history) ? acc.mock_history : [],
           xp: acc.xp || 0, rp: acc.rp || 1200,
           pvpWins: acc.pvp_wins || 0, pvpLosses: acc.pvp_losses || 0,
           bestTimeSec: acc.best_time_sec ?? null,
           srs: acc.srs || {}
         }
       });
+    }
+
+    if (action === 'get_mock_access') {
+      const key = normKey(body.usernameKey);
+      if (!key) return okRes({ ok: false, fullMockAccess: false, mockHistory: [] });
+      const { data: acc } = await sb.from('accounts').select('*').eq('username_key', key).maybeSingle();
+      if (!acc) return okRes({ ok: false, fullMockAccess: false, mockHistory: [] });
+      return okRes({
+        ok: true,
+        fullMockAccess: !!(acc.full_mock_access || acc.is_owner),
+        mockHistory: Array.isArray(acc.mock_history) ? acc.mock_history : []
+      });
+    }
+
+    if (action === 'save_mock_history') {
+      const key = normKey(body.usernameKey);
+      const history = Array.isArray(body.mockHistory) ? body.mockHistory.slice(0, 30) : [];
+      if (!key) return okRes({ ok: false }, 400);
+      const { error } = await sb.from('accounts').update({ mock_history: history, updated_at: Date.now() }).eq('username_key', key);
+      return okRes({ ok: !error, error: error?.message || '' });
     }
 
     if (action === 'heartbeat') {
@@ -544,7 +566,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     if (action === 'admin_list_accounts') {
       if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const [{ data }, revRes] = await Promise.all([
-        sb.from('accounts').select('id,username_key,name,is_owner,title,access_code_used,access_duration_label,access_expires_at,revoked,last_active_at,xp,rp'),
+        sb.from('accounts').select('*'),
         sb.from('reviewer_submissions').select('username_key')
       ]);
       const revCounts = {};
@@ -560,6 +582,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
         return {
           id: acc.id, usernameKey: acc.username_key, name: acc.name,
           isOwner: !!acc.is_owner, title: acc.title || '',
+          fullMockAccess: !!(acc.full_mock_access || acc.is_owner),
           accessCodeUsed: acc.access_code_used || '—',
           accessDurationLabel: acc.access_duration_label || 'Unlimited',
           accessExpiresAt: acc.access_expires_at ?? null,
@@ -569,6 +592,15 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
         };
       }).sort((a, b) => (Number(b.isOnline) - Number(a.isOnline)) || (b.lastActiveAt - a.lastActiveAt));
       return okRes({ ok: true, onlineCount: accounts.filter(a => a.isOnline).length, totalAccounts: accounts.length, accounts });
+    }
+
+    if (action === 'admin_set_full_mock') {
+      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      const key = normKey(body.usernameKey);
+      const granted = !!body.granted;
+      const { error } = await sb.from('accounts').update({ full_mock_access: granted, updated_at: Date.now() }).eq('username_key', key);
+      if (error) return okRes({ ok: false, error: error.message }, 500);
+      return okRes({ ok: true, granted });
     }
 
     if (action === 'admin_revoke_account') {

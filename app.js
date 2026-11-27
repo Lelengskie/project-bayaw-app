@@ -325,10 +325,16 @@ class AgriBoardApp {
         const revSentBadge = (acc.reviewersSent || 0) > 0
           ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/25 border border-indigo-400/50 text-indigo-200 font-bold text-[9px]" title="Reviewers contributed">📄 ${acc.reviewersSent} sent</span>`
           : '';
+        const mockBadge = acc.fullMockAccess && !acc.isOwner
+          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/25 border border-emerald-400/50 text-emerald-200 font-bold text-[9px]">🏆 Full Mock</span>`
+          : '';
 
         const actionBtn = acc.isOwner
           ? `<span class="text-[10px] text-amber-300 font-bold">👑 Owner Protected</span>`
           : `<div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+              ${acc.fullMockAccess
+                ? `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-rose-600/40 border border-emerald-400/60 text-emerald-200 text-[11px] font-bold" title="Click to revoke Full Mock access">🏆 Mock ON</button>`
+                : `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-navy-800 hover:bg-emerald-600/35 border border-slate-600 hover:border-emerald-400 text-slate-300 hover:text-emerald-200 text-[11px] font-bold" title="Grant Full 100-Item Mock access">🔒 Grant Mock</button>`}
               <select id="renew-sel-${acc.usernameKey}" class="bg-navy-950 border border-sky-500/40 rounded-lg px-2 py-1 text-[10px] font-bold text-sky-300">
                 <option value="1d">+1 Day</option>
                 <option value="3d">+3 Days</option>
@@ -352,6 +358,7 @@ class AgriBoardApp {
               <div class="flex items-center flex-wrap gap-1.5">
                 ${statusDot}
                 <span class="font-bold text-white">${this.escapeHtml(acc.name)}</span>
+                ${mockBadge}
                 ${revSentBadge}
                 ${revokedTag}
               </div>
@@ -462,6 +469,18 @@ class AgriBoardApp {
     if (!confirm(`${verb} access for ${displayName}?`)) return;
     await this.apiCall('POST', { action: 'admin_revoke_account', usernameKey, revoke });
     await this.loadAdminAccounts();
+  }
+
+  async adminToggleFullMock(usernameKey, granted, displayName) {
+    const verb = granted ? 'GRANT Full 100-Item PRC Mock Exam access to' : 'REVOKE Full Mock Exam access from';
+    if (!confirm(`${verb} ${displayName}?`)) return;
+    const res = await this.apiCall('POST', { action: 'admin_set_full_mock', usernameKey, granted });
+    if (res.ok) {
+      await this.loadAdminAccounts();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      alert(`⚠️ Could not update Full Mock access: ${d.error || 'Make sure you ran the 2-column Supabase SQL snippet first!'}`);
+    }
   }
 
   async adminDeleteAccessCode(code) {
@@ -836,7 +855,7 @@ class AgriBoardApp {
   }
 
   showView(viewName) {
-    const views = ['dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'admin'];
+    const views = ['dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'admin', 'mock-exam'];
     views.forEach(v => {
       const el = document.getElementById(`view-${v}`);
       if (el) el.classList.add('hidden');
@@ -848,7 +867,7 @@ class AgriBoardApp {
     document.querySelectorAll('.topnav-btn').forEach(b => {
       b.className = 'topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80';
     });
-    const topMap = { 'dashboard': 'topnav-dashboard', 'pvp-lobby': 'topnav-pvp', 'pvp-arena': 'topnav-pvp', 'leaderboards': 'topnav-leaderboards', 'vault': 'topnav-vault', 'progress': 'topnav-progress' };
+    const topMap = { 'dashboard': 'topnav-dashboard', 'mock-exam': 'topnav-mock-exam', 'pvp-lobby': 'topnav-pvp', 'pvp-arena': 'topnav-pvp', 'leaderboards': 'topnav-leaderboards', 'vault': 'topnav-vault', 'progress': 'topnav-progress' };
     const topEl = document.getElementById(topMap[viewName]);
     if (topEl) {
       topEl.className = 'topnav-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 nav-home-active text-white';
@@ -2591,4 +2610,5 @@ class AgriBoardApp {
 }
 
 const app = new AgriBoardApp();
+window.app = app;
 window.addEventListener('DOMContentLoaded', () => app.init());
