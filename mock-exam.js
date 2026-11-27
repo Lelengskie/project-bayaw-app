@@ -773,6 +773,17 @@
         };
       });
 
+      // Wrong answers feed the Weak Topics page (misses live in the study progress record)
+      const srs = window.app?.user?.srs;
+      if (srs) {
+        for (const d of details) {
+          if (d.isCorrect || d.picked === undefined || d.picked === null) continue;
+          const r = srs[d.id] || (srs[d.id] = { status: "learning", lastRating: "again", interval: 0, due: Date.now(), reps: 0 });
+          r.misses = (r.misses || 0) + 1;
+        }
+        window.app.saveUserState?.();
+      }
+
       const total = s.items.length;
       const pct = total ? (correct / total) * 100 : 0;
       const elapsedSec = Math.max(1, s.totalSec - s.remainingSec);

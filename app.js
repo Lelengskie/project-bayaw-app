@@ -860,7 +860,7 @@ class AgriBoardApp {
   }
 
   showView(viewName) {
-    const views = ['dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'admin', 'mock-exam'];
+    const views = ['dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'weak', 'admin', 'mock-exam'];
     views.forEach(v => {
       const el = document.getElementById(`view-${v}`);
       if (el) el.classList.add('hidden');
@@ -877,6 +877,7 @@ class AgriBoardApp {
     if (viewName === 'leaderboards') this.renderLeaderboards();
     if (viewName === 'vault') this.renderVault();
     if (viewName === 'progress') this.renderAllLevelsProgress();
+    if (viewName === 'weak') this.renderWeakTopics();
   }
 
   openPvpLobby() {
@@ -1132,6 +1133,7 @@ class AgriBoardApp {
   // ==================== INLINE STUDY SESSION & ANKI SRS ====================
   selectStudyLevel(areaId, levelNum) {
     this.problemSolvingOnly = false;
+    this.drillLabel = null;
     this.activeStudyArea = areaId;
     this.activeStudyLevel = levelNum;
     const lst = this.getLevelStats(areaId, levelNum);
@@ -1156,6 +1158,7 @@ class AgriBoardApp {
   openProblemSolvingMode(areaId) {
     this.showView('dashboard');
     this.problemSolvingOnly = true;
+    this.drillLabel = null;
     this.activeStudyArea = areaId;
     const area = this.db.areas.find(a => a.id === areaId);
     this.currentDeck = area ? area.items.filter(it => it.category === 'problem_solving') : [];
@@ -1234,7 +1237,13 @@ class AgriBoardApp {
     const masteredInDeck = this.currentDeck.filter(it => this.user.srs[it.id]?.status === 'mastered').length;
     const deckPct = this.currentDeck.length > 0 ? (masteredInDeck / this.currentDeck.length) * 100 : 0;
 
-    if (this.problemSolvingOnly) {
+    if (this.drillLabel) {
+      document.getElementById('study-header-title').textContent = `Weak-topic drill — ${this.drillLabel} (${this.currentDeck.length} questions)`;
+      document.getElementById('study-q-num').textContent = `Q. ${this.currentCardIdx + 1} / ${this.currentDeck.length}`;
+      document.getElementById('study-mini-lvl-label').textContent = 'Weak-topic drill';
+      document.getElementById('study-mini-lvl-txt').textContent = `${masteredInDeck} / ${this.currentDeck.length} (${deckPct.toFixed(0)}%)`;
+      document.getElementById('study-mini-lvl-bar').style.width = `${deckPct}%`;
+    } else if (this.problemSolvingOnly) {
       document.getElementById('study-header-title').innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Study Session — Area-${this.activeStudyArea} Level (PS) (${this.currentDeck.length} Problems)`;
       document.getElementById('study-q-num').textContent = `Problem ${this.currentCardIdx + 1} / ${this.currentDeck.length}`;
       document.getElementById('study-mini-lvl-label').textContent = `Area-${this.activeStudyArea} Level (PS)`;
@@ -1326,6 +1335,12 @@ class AgriBoardApp {
     const card = this.currentDeck[this.currentCardIdx];
     const chosen = card.choices[choiceIdx];
     const isCorrect = chosen === card.answer;
+    if (!isCorrect) {
+      const r = this.user.srs[card.id] || (this.user.srs[card.id] = { status: 'learning', lastRating: 'again', interval: 0, due: Date.now(), reps: 0 });
+      r.misses = (r.misses || 0) + 1;
+      this.missCountedFor = card.id; // the rating that follows should not count the same miss again
+      this.saveUserState();
+    }
 
     card.choices.forEach((ch, idx) => {
       const btn = document.getElementById(`study-choice-${idx}`);
@@ -1436,6 +1451,9 @@ class AgriBoardApp {
     const now = Date.now();
     const DAY_MS = 86400000;
 
+    if ((rating === 'again' || rating === 'hard') && this.missCountedFor !== card.id) prev.misses = (prev.misses || 0) + 1;
+    this.missCountedFor = null;
+
     if (rating === 'again') {
       // Real Anki behavior: returns automatically in 1 minute (60s)
       prev.status = 'learning';
@@ -1522,7 +1540,9 @@ class AgriBoardApp {
     const map = document.getElementById('study-item-minimap');
     const startNum = (this.activeStudyLevel - 1) * 100 + 1;
     const endNum = startNum + this.currentDeck.length - 1;
-    document.getElementById('minimap-title').innerHTML = this.problemSolvingOnly
+    document.getElementById('minimap-title').innerHTML = this.drillLabel
+      ? `<svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Drill minimap (${this.currentDeck.length} questions)`
+      : this.problemSolvingOnly
       ? `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Area ${this.activeStudyArea} Problem Solving Minimap (${this.currentDeck.length} Problems)`
       : `<svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> 100-Item Level Minimap (Level ${this.activeStudyLevel}: ${startNum} – ${endNum})`;
 
@@ -1555,8 +1575,8 @@ class AgriBoardApp {
         cls += ' ring-2 ring-white scale-110 z-10 shadow-md';
       }
       return `
-        <button onclick="app.jumpToStudyCard(${idx})" class="h-6 rounded text-xs font-mono transition-all ${cls}" title="${this.problemSolvingOnly ? 'Problem #' + (idx + 1) : 'Item #' + it.index}">
-          ${this.problemSolvingOnly ? idx + 1 : it.index}
+        <button onclick="app.jumpToStudyCard(${idx})" class="h-6 rounded text-xs font-mono transition-all ${cls}" title="${this.problemSolvingOnly || this.drillLabel ? 'Question ' + (idx + 1) : 'Item #' + it.index}">
+          ${this.problemSolvingOnly || this.drillLabel ? idx + 1 : it.index}
         </button>
       `;
     }).join('');
@@ -1891,7 +1911,7 @@ class AgriBoardApp {
       this.pvpClearedCount++;
       this.pvpCombo++;
       this.user.xp += 15;
-      this.user.srs[card.id] = { status: 'mastered', interval: 3, due: Date.now() + 3 * 86400000, reps: (this.user.srs[card.id]?.reps || 0) + 1 };
+      this.user.srs[card.id] = { status: 'mastered', interval: 3, due: Date.now() + 3 * 86400000, reps: (this.user.srs[card.id]?.reps || 0) + 1, misses: this.user.srs[card.id]?.misses || 0 };
       this.saveUserState();
       this.updatePvpScoreboard();
       this.syncMyPvpProgress();
@@ -1903,7 +1923,7 @@ class AgriBoardApp {
       this.pvpLapses++;
       const missed = this.pvpPlayerQueue.shift();
       this.pvpPlayerQueue.push(missed);
-      this.user.srs[card.id] = { status: 'learning', lastRating: 'again', interval: 0, due: Date.now(), reps: 0 };
+      this.user.srs[card.id] = { status: 'learning', lastRating: 'again', interval: 0, due: Date.now(), reps: 0, misses: (this.user.srs[card.id]?.misses || 0) + 1 };
       this.saveUserState();
       this.updatePvpScoreboard();
       this.syncMyPvpProgress();
@@ -2160,6 +2180,96 @@ class AgriBoardApp {
       this.currentCardIdx = idx;
       this.renderStudyCard();
     }
+    this.scrollToStudySession();
+  }
+
+  // ==================== WEAK TOPICS ====================
+  // A question counts as missed if it was ever answered wrong / rated Again or Hard, or is still being learned.
+  isMissed(rec) {
+    return !!rec && ((rec.misses || 0) > 0 || rec.status === 'learning');
+  }
+
+  getWeakTopics() {
+    const topics = new Map();
+    for (const it of this.allItemsFlat) {
+      const rec = this.user.srs[it.id];
+      if (!rec) continue;
+      const name = /^\d\.0 /.test(it.subtopic || '') || !it.subtopic ? `${it.area}.0 Mixed practice problems` : it.subtopic;
+      const t = topics.get(name) || { name, area: it.area, seen: 0, missed: [], open: 0 };
+      t.seen++;
+      if (this.isMissed(rec)) {
+        t.missed.push(it);
+        if (rec.status === 'learning') t.open++;
+      }
+      topics.set(name, t);
+    }
+    return [...topics.values()]
+      .filter(t => t.seen >= 5 && t.missed.length > 0)
+      .map(t => ({ ...t, rate: t.missed.length / t.seen }))
+      .sort((a, b) => (b.rate - a.rate) || (b.missed.length - a.missed.length));
+  }
+
+  renderWeakTopics() {
+    const box = document.getElementById('weak-topics-list');
+    if (!box) return;
+    const seenTotal = Object.keys(this.user.srs || {}).length;
+    this.weakTopicsCache = this.getWeakTopics().slice(0, 10);
+    const drillAll = document.getElementById('btn-drill-all-weak');
+    if (drillAll) drillAll.classList.toggle('hidden', this.weakTopicsCache.length < 2);
+
+    if (!this.weakTopicsCache.length) {
+      box.innerHTML = `
+        <div class="py-10 text-center space-y-2">
+          <svg class="ic text-slate-400" style="width:28px;height:28px" aria-hidden="true"><use href="#i-target"/></svg>
+          <div class="text-sm font-semibold text-white">${seenTotal < 5 ? 'Answer a few questions first' : 'No weak topics yet'}</div>
+          <div class="text-sm text-slate-400 max-w-sm mx-auto">${seenTotal < 5
+            ? 'Study or take a mock exam. Topics where you miss questions will show up here.'
+            : 'You have not missed any questions in a topic you studied (5 or more questions). Keep going.'}</div>
+        </div>`;
+      return;
+    }
+
+    box.innerHTML = this.weakTopicsCache.map((t, i) => {
+      const pct = Math.round(t.rate * 100);
+      const tone = pct >= 50 ? 'bg-rose-500' : pct >= 25 ? 'bg-amber-500' : 'bg-emerald-500';
+      return `
+        <div class="py-3.5 border-b border-rule last:border-b-0 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div class="flex-1 min-w-0 space-y-1.5">
+            <div class="flex items-baseline gap-2">
+              <span class="label-mono shrink-0">Area ${t.area}</span>
+              <span class="text-[15px] font-semibold text-white truncate" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex-1 h-1.5 rounded-full bg-navy-950 overflow-hidden" role="img" aria-label="${pct}% missed">
+                <div class="h-full rounded-full ${tone}" style="width:${Math.max(4, pct)}%"></div>
+              </div>
+              <span class="font-mono text-sm text-white w-11 text-right">${pct}%</span>
+            </div>
+            <div class="text-xs text-slate-400">Missed ${t.missed.length} of ${t.seen} answered${t.open ? ` · ${t.open} not mastered yet` : ''}</div>
+          </div>
+          <button onclick="app.drillWeakTopic(${i})" class="shrink-0 self-start sm:self-center min-h-[40px] px-4 rounded-[10px] border border-rule text-sm font-semibold text-white hover:border-emerald-500 hover:text-emerald-300 transition-colors">Drill ${t.missed.length}</button>
+        </div>`;
+    }).join('');
+  }
+
+  // index = one topic from the list; 'all' = the top 3 topics together
+  drillWeakTopic(index) {
+    const list = this.weakTopicsCache || this.getWeakTopics().slice(0, 10);
+    const picked = index === 'all' ? list.slice(0, 3) : [list[index]].filter(Boolean);
+    if (!picked.length) return;
+    const score = (it) => { const r = this.user.srs[it.id] || {}; return (r.status === 'learning' ? 1000 : 0) + (r.misses || 0); };
+    const deck = picked.flatMap(t => t.missed).sort((a, b) => score(b) - score(a)).slice(0, 60);
+
+    this.problemSolvingOnly = false;
+    this.drillLabel = index === 'all' ? 'Top 3 weak topics' : picked[0].name;
+    this.activeStudyArea = deck[0].area;
+    this.currentDeck = deck;
+    this.currentCardIdx = 0;
+    const strip = document.getElementById('prob-solving-strip');
+    if (strip) strip.classList.add('hidden');
+    this.showView('dashboard');
+    this.renderLevelTiles();
+    this.renderStudyCard();
     this.scrollToStudySession();
   }
 
