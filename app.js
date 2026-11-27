@@ -2551,10 +2551,18 @@ class AgriBoardApp {
     let s = String(expr || '').trim().replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
     // Protect common engineering units in \text{...}
     s = s.replace(/\bm_dot\b/g, '\\dot{m}');
-    s = s.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+    // √( ... ) and ^( ... ) with nested parens, e.g. √(2(0.9/9.81)), e^((y + z)/2)
+    const wrapParens = (open, repl) => {
+      for (let i = s.indexOf(open); i !== -1; i = s.indexOf(open, i + 1)) {
+        let depth = 0, j = i + open.length - 1;
+        for (; j < s.length; j++) { if (s[j] === '(') depth++; else if (s[j] === ')' && --depth === 0) break; }
+        if (j < s.length) s = s.slice(0, i) + repl + '{' + s.slice(i + open.length, j) + '}' + s.slice(j + 1);
+      }
+    };
+    wrapParens('√(', '\\sqrt');
     s = s.replace(/√(\d+(?:\.\d+)?|[A-Za-z]+)/g, '\\sqrt{$1}');
     // Exponents & superscripts
-    s = s.replace(/\^\(([^)]+)\)/g, '^{$1}');
+    wrapParens('^(', '^');
     s = s.replace(/\^(-?[A-Za-z0-9\.]+)/g, '^{$1}');
     s = s.replace(/²/g, '^{2}').replace(/³/g, '^{3}');
     // Subscripts like T_i, S_d, P_w, c_p
@@ -2566,8 +2574,10 @@ class AgriBoardApp {
     s = s.replace(/π/g, '\\pi ').replace(/Δ/g, '\\Delta ').replace(/θ/g, '\\theta ').replace(/η/g, '\\eta ').replace(/°/g, '^\\circ ');
     // Stacked fractions for clean patterns: (a)/(b) or (a/b) or num/den where not a unit like m/s or ha/hr
     const unitDen = /^(s|hr|hrs|h|min|day|kg|g|m|cm|mm|km|L|mL|ha|gal|lb|lbs|ft|in|s\^\{2\}|m\^\{2\}|m\^\{3\}|kW|hp|yr|year|rev|pass|row|bag|bags|head|heads|°C|C|K)$/i;
-    s = s.replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, '\\frac{$1}{$2}');
-    s = s.replace(/\(([^()\/]+)\/([^()\/]+)\)/g, (m, a, b) => unitDen.test(b.trim()) ? m : `\\left(\\frac{${a.trim()}}{${b.trim()}}\\right)`);
+    // skip a match that would cut through an exponent like (x^{3/2})
+    const braced = t => t.split('{').length === t.split('}').length;
+    s = s.replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, (m, a, b) => braced(a) && braced(b) ? `\\frac{${a}}{${b}}` : m);
+    s = s.replace(/\(([^()\/]+)\/([^()\/]+)\)/g, (m, a, b) => unitDen.test(b.trim()) || !braced(a) || !braced(b) ? m : `\\left(\\frac{${a.trim()}}{${b.trim()}}\\right)`);
     s = s.replace(/(?<![A-Za-z\\])(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\d+[A-Za-z]|\\sqrt\{[^}]+\})\s*\/\s*(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\\sqrt\{[^}]+\})/g, (m, a, b, off, str) => {
       if (unitDen.test(b.trim())) return m;
       if (/^[A-Za-z]$/.test(a.trim()) && /\d\s*$/.test(str.slice(0, off))) return m; // "24 V / 6 V": V is a unit, not a numerator
