@@ -2548,7 +2548,7 @@ class AgriBoardApp {
   }
 
   plainExprToLatex(expr) {
-    let s = String(expr || '').trim();
+    let s = String(expr || '').trim().replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
     // Protect common engineering units in \text{...}
     s = s.replace(/\bm_dot\b/g, '\\dot{m}');
     s = s.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
@@ -2558,7 +2558,7 @@ class AgriBoardApp {
     s = s.replace(/\^(-?[A-Za-z0-9\.]+)/g, '^{$1}');
     s = s.replace(/²/g, '^{2}').replace(/³/g, '^{3}');
     // Subscripts like T_i, S_d, P_w, c_p
-    s = s.replace(/\b([A-Za-z])_([A-Za-z0-9]+)\b/g, '$1_{$2}');
+    s = s.replace(/\b([A-Za-z])_([A-Za-z0-9]+(?:_[A-Za-z0-9]+)*)\b/g, (m, a, b) => `${a}_{${b.replace(/_/g, ' ')}}`);
     // Symbols
     s = s.replace(/=>|⇒/g, ' \\Rightarrow ').replace(/->|→/g, ' \\rightarrow ');
     s = s.replace(/×/g, ' \\times ').replace(/÷/g, ' \\div ');
@@ -2568,12 +2568,21 @@ class AgriBoardApp {
     const unitDen = /^(s|hr|hrs|h|min|day|kg|g|m|cm|mm|km|L|mL|ha|gal|lb|lbs|ft|in|s\^\{2\}|m\^\{2\}|m\^\{3\}|kW|hp|yr|year|rev|pass|row|bag|bags|head|heads|°C|C|K)$/i;
     s = s.replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, '\\frac{$1}{$2}');
     s = s.replace(/\(([^()\/]+)\/([^()\/]+)\)/g, (m, a, b) => unitDen.test(b.trim()) ? m : `\\left(\\frac{${a.trim()}}{${b.trim()}}\\right)`);
-    s = s.replace(/(?<![A-Za-z\\])(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\d+[A-Za-z]|\\sqrt\{[^}]+\})\s*\/\s*(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\\sqrt\{[^}]+\})/g, (m, a, b) => {
+    s = s.replace(/(?<![A-Za-z\\])(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\d+[A-Za-z]|\\sqrt\{[^}]+\})\s*\/\s*(\d+(?:,\d{3})*(?:\.\d+)?|[A-Za-z](?:_\{[^}]+\})?|\\sqrt\{[^}]+\})/g, (m, a, b, off, str) => {
       if (unitDen.test(b.trim())) return m;
+      if (/^[A-Za-z]$/.test(a.trim()) && /\d\s*$/.test(str.slice(0, off))) return m; // "24 V / 6 V": V is a unit, not a numerator
       return `\\frac{${a.trim()}}{${b.trim()}}`;
     });
+    // Words stay readable: math mode would italicize them and drop their spaces ("Modulesinseries")
+    s = s.replace(/\b(sin|cos|tan|log|ln|exp)\b(?=\s*[(\d])/g, '\\$1 ');
+    s = s.replace(/(?<![\\A-Za-z])[A-Za-z]{2,}(?:[ \t]+[A-Za-z]{2,})*(?![A-Za-z])/g, (w, off, str) => {
+      const before = str.slice(0, off), after = str.slice(off + w.length);
+      const padL = /[0-9A-Za-z)}]\s+$/.test(before) && !/\\[A-Za-z]+\s+$/.test(before) ? '\\ ' : '';
+      const padR = /^\s+[0-9A-Za-z(]/.test(after) ? '\\ ' : '';
+      return `${padL}\\text{${w}}${padR}`;
+    });
     // Escape % and $ for KaTeX
-    s = s.replace(/%/g, '\\%').replace(/\$/g, '\\$');
+    s = s.replace(/%/g, '\\%').replace(/\$/g, '\\$').replace(/&/g, '\\&').replace(/#/g, '\\#');
     return s;
   }
 
