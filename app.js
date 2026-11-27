@@ -1,5 +1,8 @@
 // AgriBoard Prep (Project Bayaw) — Gamified ABELE Reviewer & 1v1 PvP Anki Race Engine
 const STORAGE_KEY = 'agriboard_prep_abe_v2';
+// PRC 2027 schedule: ABE licensure exam on Nov 22-23, 2027 (prc.gov.ph/2027-schedule-examination). Reviewees can change it.
+const DEFAULT_EXAM_DATE = '2027-11-22';
+const PRC_SCHEDULE = { filingStart: '2027-08-24', filingEnd: '2027-10-25', examEnd: '2027-11-23', results: '2027-11-29' };
 
 class AgriBoardApp {
   constructor() {
@@ -131,7 +134,7 @@ class AgriBoardApp {
           this.user.title = result.record.title || '';
           this.updateOwnerBadgeUI();
         }
-        await this.fetchLiveLeaderboard();
+        if (!document.getElementById('view-leaderboards')?.classList.contains('hidden')) await this.fetchLiveLeaderboard();
       }
     } catch (e) {
       // Offline / local server fallback handled gracefully
@@ -613,8 +616,9 @@ class AgriBoardApp {
         this.syncUserToLeaderboard();
         this.sendHeartbeat();
       }
-      setInterval(() => { if (!document.hidden) this.fetchLiveLeaderboard(); }, 60000);
-      setInterval(() => { if (!document.hidden) this.loadGlobalChat(); }, 12000);
+      // Kept slow on purpose: Supabase free tier allows 5 GB of downloads a month
+      setInterval(() => { if (!document.hidden) this.fetchLiveLeaderboard(); }, 300000);
+      setInterval(() => { if (!document.hidden && this.isChatOnScreen()) this.loadGlobalChat(); }, 15000);
       setInterval(() => { if (!document.hidden) this.sendHeartbeat(); }, 90000);
       window.addEventListener('beforeunload', () => {
         if (this.syncDebounceTimer) {
@@ -1023,7 +1027,99 @@ class AgriBoardApp {
     return { items, total: items.length, mastered, learning, pct };
   }
 
+  // ==================== TODAY: exam countdown, daily goal, streak ====================
+  // Kept inside srs (key "_daily") so it syncs with the rest of the progress, with no extra Supabase calls.
+  localDay(offsetDays = 0) {
+    const d = new Date(); d.setDate(d.getDate() + offsetDays);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  dailyState() {
+    if (!this.user.srs) this.user.srs = {};
+    const d = this.user.srs._daily || (this.user.srs._daily = { goal: 50, count: 0, day: '', streak: 0, lastHit: '' });
+    const today = this.localDay();
+    if (d.day !== today) { d.day = today; d.count = 0; }
+    return d;
+  }
+
+  countAnswered(n = 1) {
+    const d = this.dailyState();
+    const before = d.count;
+    d.count += n;
+    if (before < d.goal && d.count >= d.goal) {
+      d.streak = d.lastHit === this.localDay(-1) ? (d.streak || 0) + 1 : 1;
+      d.lastHit = this.localDay();
+    }
+  }
+
+  setDailyGoal(v) {
+    const d = this.dailyState();
+    d.goal = Math.max(5, Math.min(500, Number(v) || 50));
+    if (d.count >= d.goal && d.lastHit !== this.localDay()) {
+      d.streak = d.lastHit === this.localDay(-1) ? (d.streak || 0) + 1 : 1;
+      d.lastHit = this.localDay();
+    }
+    this.saveUserState();
+  }
+
+  setExamDate(v) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v || '')) return;
+    this.dailyState().examDate = v;
+    this.saveUserState();
+  }
+
+  renderToday() {
+    const el = document.getElementById('today-exam-days');
+    if (!el) return;
+    const d = this.dailyState();
+    const exam = d.examDate || DEFAULT_EXAM_DATE;
+    const [y, m, day] = exam.split('-').map(Number);
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(y, m - 1, day) - start) / 86400000);
+    el.textContent = days >= 0 ? days.toLocaleString() : '—';
+    document.getElementById('today-exam-unit').textContent = days === 1 ? 'day' : days >= 0 ? 'days' : '';
+    const nice = new Date(y, m - 1, day).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    document.getElementById('today-exam-date').textContent = days < 0 ? 'Set your next exam' : (exam === DEFAULT_EXAM_DATE ? 'Nov 22–23, 2027' : nice);
+    document.getElementById('today-exam-input').value = exam;
+
+    document.getElementById('today-count').textContent = d.count;
+    const sel = document.getElementById('today-goal-select');
+    if (![...sel.options].some(o => Number(o.value) === d.goal)) sel.add(new Option(String(d.goal), String(d.goal)));
+    sel.value = String(d.goal);
+    const bar = document.getElementById('today-bar');
+    bar.style.width = `${Math.min(100, (d.count / d.goal) * 100)}%`;
+
+    // A streak counts while today or yesterday hit the goal
+    const alive = d.lastHit === this.localDay() || d.lastHit === this.localDay(-1);
+    const streak = alive ? (d.streak || 0) : 0;
+    document.getElementById('today-streak').textContent = streak;
+    document.getElementById('today-streak-unit').textContent = streak === 1 ? 'day' : 'days';
+    document.getElementById('today-streak-sub').textContent = d.lastHit === this.localDay()
+      ? 'Done today'
+      : (streak ? `${Math.max(0, d.goal - d.count)} to go` : 'Not started');
+
+    // Official schedule row: only shown for the default (PRC 2027) exam date
+    const sched = document.getElementById('today-schedule');
+    sched.classList.toggle('hidden', exam !== DEFAULT_EXAM_DATE);
+    const until = ymd => { const [a, b, c] = ymd.split('-').map(Number); return Math.round((new Date(a, b - 1, c) - start) / 86400000); };
+    const show = (id, num, unit) => { document.getElementById(id).textContent = num; document.getElementById(id + '-unit').textContent = unit; };
+    const plural = n => (n === 1 ? 'day' : 'days');
+    const fs = until(PRC_SCHEDULE.filingStart), fe = until(PRC_SCHEDULE.filingEnd);
+    if (fs > 0) show('sched-filing', fs.toLocaleString(), `${plural(fs)} to open`);
+    else if (fe > 0) show('sched-filing', fe.toLocaleString(), `${plural(fe)} left`);
+    else if (fe === 0) show('sched-filing', 'Last day', '');
+    else show('sched-filing', 'Closed', '');
+    const ee = until(PRC_SCHEDULE.examEnd);
+    if (days > 0) show('sched-exam', days.toLocaleString(), plural(days));
+    else if (ee >= 0) show('sched-exam', 'Today', '');
+    else show('sched-exam', 'Done', '');
+    const r = until(PRC_SCHEDULE.results);
+    if (r > 0) show('sched-results', r.toLocaleString(), plural(r));
+    else show('sched-results', 'Out', '');
+  }
+
   updateAllProgressWidgets() {
+    this.renderToday();
     if (!this.db) return;
     const s1 = this.getAreaStats(1);
     const s2 = this.getAreaStats(2);
@@ -1498,6 +1594,7 @@ class AgriBoardApp {
     }
 
     this.user.srs[card.id] = prev;
+    this.countAnswered(1);
     this.saveUserState();
     this.renderLevelTiles();
 
@@ -2225,7 +2322,7 @@ class AgriBoardApp {
   renderWeakTopics() {
     const box = document.getElementById('weak-topics-list');
     if (!box) return;
-    const seenTotal = Object.keys(this.user.srs || {}).length;
+    const seenTotal = Object.keys(this.user.srs || {}).filter(k => !k.startsWith('_')).length;
     this.weakTopicsCache = this.getWeakTopics().slice(0, 10);
     const drillAll = document.getElementById('btn-drill-all-weak');
     if (drillAll) drillAll.classList.toggle('hidden', this.weakTopicsCache.length < 2);
@@ -2329,14 +2426,23 @@ class AgriBoardApp {
   }
 
   // ==================== GLOBAL CHAT & FEEDBACK / SUGGESTIONS ====================
-  async loadGlobalChat() {
+  isChatOnScreen() {
+    return ['global-chat-messages', 'mobile-chat-messages'].some(id => document.getElementById(id)?.offsetParent);
+  }
+
+  // full = reload the last 50; otherwise only ask for messages newer than the ones already shown
+  async loadGlobalChat(full = false) {
     const box = document.getElementById('global-chat-messages');
     if (!box) return;
+    const have = full ? [] : (this.chatMessages || []);
+    const since = have.length ? have[have.length - 1].createdAt : 0;
     try {
-      const res = await this.apiCall('POST', { action: 'chat_list' });
+      const res = await this.apiCall('POST', { action: 'chat_list', since });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.messages)) return;
-      this.renderGlobalChat(data.messages);
+      if (since && data.messages.length === 0) return;
+      this.chatMessages = [...have, ...data.messages].slice(-50);
+      this.renderGlobalChat(this.chatMessages);
     } catch (e) {}
   }
 
@@ -2408,6 +2514,7 @@ class AgriBoardApp {
       const res = await this.apiCall('POST', { action: 'chat_send', id: this.user.id, name: this.user.name, text });
       const data = await res.json();
       if (res.ok && Array.isArray(data.messages)) {
+        this.chatMessages = data.messages;
         this.renderGlobalChat(data.messages);
         ['global-chat-messages', 'mobile-chat-messages'].forEach(id => {
           const b = document.getElementById(id);
@@ -2420,7 +2527,7 @@ class AgriBoardApp {
   async adminClearChat() {
     if (!confirm('Clear all Global Chat messages?')) return;
     await this.apiCall('POST', { action: 'admin_clear_chat' });
-    await this.loadGlobalChat();
+    await this.loadGlobalChat(true);
     alert('🧹 Global Chat cleared!');
   }
 

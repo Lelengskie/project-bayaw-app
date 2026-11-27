@@ -140,8 +140,14 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
     // 1. GLOBAL CHAT
     if (action === 'chat_list') {
-      const { data } = await sb.from('global_chat').select('*').order('created_at', { ascending: true }).limit(50);
-      const messages = (data || []).map(m => ({
+      // With "since", only messages newer than that are sent (usually none), which keeps downloads tiny
+      const since = Number(body.since) || 0;
+      let q = sb.from('global_chat').select('id,name,is_owner,title,text,created_at');
+      q = since ? q.gt('created_at', since).order('created_at', { ascending: true }).limit(50)
+                : q.order('created_at', { ascending: false }).limit(50);
+      const { data } = await q;
+      const rows = since ? (data || []) : (data || []).reverse();
+      const messages = rows.map(m => ({
         id: m.id, name: m.name, isOwner: !!m.is_owner, title: m.title || '', text: m.text, createdAt: m.created_at
       }));
       return okRes({ ok: true, messages });
@@ -156,8 +162,8 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       // The owner badge and title are decided by Supabase, not by the browser
       const sent = await callRpc('bayaw_chat_send', { p_name: senderName, p_id: senderId, p_text: text, p_pass: adminPasscode || '' });
       if (!sent.ok) return out(sent);
-      const { data } = await sb.from('global_chat').select('*').order('created_at', { ascending: true }).limit(50);
-      const messages = (data || []).map(m => ({
+      const { data } = await sb.from('global_chat').select('id,name,is_owner,title,text,created_at').order('created_at', { ascending: false }).limit(50);
+      const messages = (data || []).reverse().map(m => ({
         id: m.id, name: m.name, isOwner: !!m.is_owner, title: m.title || '', text: m.text, createdAt: m.created_at
       }));
       return okRes({ ok: true, messages });

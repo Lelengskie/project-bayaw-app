@@ -781,6 +781,7 @@
           const r = srs[d.id] || (srs[d.id] = { status: "learning", lastRating: "again", interval: 0, due: Date.now(), reps: 0 });
           r.misses = (r.misses || 0) + 1;
         }
+        window.app.countAnswered?.(details.filter(d => d.picked !== undefined && d.picked !== null).length);
         window.app.saveUserState?.();
       }
 
