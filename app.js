@@ -181,10 +181,10 @@ class AgriBoardApp {
     if (!tagEl) return;
     if (this.user.isOwner || this.isAdminVerified) {
       tagEl.classList.remove('hidden');
-      tagEl.textContent = '👑 OWNER';
+      tagEl.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER';
     } else if (this.user.title) {
       tagEl.classList.remove('hidden');
-      tagEl.textContent = `🏷️ ${this.user.title}`;
+      tagEl.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${this.escapeHtml(this.user.title)}`;
     } else {
       tagEl.classList.add('hidden');
     }
@@ -270,20 +270,20 @@ class AgriBoardApp {
       const res = await this.apiCall('POST', { action: 'admin_list_access_codes' });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.codes) || data.codes.length === 0) {
-        container.innerHTML = `<div class="text-[11px] text-slate-400">No access codes generated yet. Click "+ Generate Code" above!</div>`;
+        container.innerHTML = `<div class="text-xs text-slate-400">No access codes generated yet. Click "+ Generate Code" above!</div>`;
         return;
       }
       container.innerHTML = data.codes.map(c => `
         <div class="flex flex-wrap items-center justify-between gap-2 bg-navy-950 border border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-mono font-black text-emerald-300 tracking-wider">${this.escapeHtml(c.code)}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold">${this.escapeHtml(c.durationLabel || 'Unlimited')}</span>
-            ${c.label ? `<span class="text-[10px] px-2 py-0.5 rounded bg-navy-800 text-slate-300">${this.escapeHtml(c.label)}</span>` : ''}
-            <span class="text-[10px] font-mono ${c.uses >= c.maxUses ? 'text-rose-400' : 'text-sky-300'}">${c.uses} / ${c.maxUses} used</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold">${this.escapeHtml(c.durationLabel || 'Unlimited')}</span>
+            ${c.label ? `<span class="text-xs px-2 py-0.5 rounded bg-navy-800 text-slate-300">${this.escapeHtml(c.label)}</span>` : ''}
+            <span class="text-xs font-mono ${c.uses >= c.maxUses ? 'text-rose-400' : 'text-sky-300'}">${c.uses} / ${c.maxUses} used</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <button onclick="navigator.clipboard?.writeText('${c.code}'); alert('Copied: ${c.code}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-[10px] font-bold">📋 Copy</button>
-            <button onclick="app.adminDeleteAccessCode('${c.code}')" class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-[10px] font-bold">Delete</button>
+            <button onclick="navigator.clipboard?.writeText('${c.code}'); alert('Copied: ${c.code}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-xs font-bold">📋 Copy</button>
+            <button onclick="app.adminDeleteAccessCode('${c.code}')" class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-bold">Delete</button>
           </div>
         </div>
       `).join('');
@@ -307,35 +307,35 @@ class AgriBoardApp {
 
       tbody.innerHTML = data.accounts.map(acc => {
         const statusDot = acc.isOnline
-          ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online</span>`
-          : `<span class="inline-flex items-center gap-1 text-[10px] text-slate-500"><span class="w-2 h-2 rounded-full bg-slate-600"></span> Offline</span>`;
+          ? `<span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online</span>`
+          : `<span class="inline-flex items-center gap-1 text-xs text-slate-500"><span class="w-2 h-2 rounded-full bg-slate-600"></span> Offline</span>`;
 
-        let daysBadge = `<span class="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-[10px]">♾️ Unlimited</span>`;
+        let daysBadge = `<span class="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-infinity"/></svg> Unlimited</span>`;
         if (acc.accessExpiresAt) {
           if (acc.daysRemaining <= 0) {
-            daysBadge = `<span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-400/50 text-rose-300 font-bold text-[10px]">Expired (0d)</span>`;
+            daysBadge = `<span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-400/50 text-rose-300 font-bold text-xs">Expired (0d)</span>`;
           } else {
-            daysBadge = `<span class="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-[10px]">${acc.daysRemaining}d left (${this.escapeHtml(acc.accessDurationLabel)})</span>`;
+            daysBadge = `<span class="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs">${acc.daysRemaining}d left (${this.escapeHtml(acc.accessDurationLabel)})</span>`;
           }
         }
 
         const revokedTag = acc.revoked
-          ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[9px] uppercase">REVOKED</span>`
+          ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-xs uppercase">REVOKED</span>`
           : '';
         const revSentBadge = (acc.reviewersSent || 0) > 0
-          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/25 border border-indigo-400/50 text-indigo-200 font-bold text-[9px]" title="Reviewers contributed">📄 ${acc.reviewersSent} sent</span>`
+          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/25 border border-indigo-400/50 text-indigo-200 font-bold text-xs" title="Reviewers contributed"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg> ${acc.reviewersSent} sent</span>`
           : '';
         const mockBadge = acc.fullMockAccess && !acc.isOwner
-          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/25 border border-emerald-400/50 text-emerald-200 font-bold text-[9px]">🏆 Full Mock</span>`
+          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/25 border border-emerald-400/50 text-emerald-200 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Full Mock</span>`
           : '';
 
         const actionBtn = acc.isOwner
-          ? `<span class="text-[10px] text-amber-300 font-bold">👑 Owner Protected</span>`
+          ? `<span class="text-xs text-amber-300 font-bold"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> Owner Protected</span>`
           : `<div class="inline-flex flex-wrap items-center justify-end gap-1.5">
               ${acc.fullMockAccess
-                ? `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-rose-600/40 border border-emerald-400/60 text-emerald-200 text-[11px] font-bold" title="Click to revoke Full Mock access">🏆 Mock ON</button>`
-                : `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-navy-800 hover:bg-emerald-600/35 border border-slate-600 hover:border-emerald-400 text-slate-300 hover:text-emerald-200 text-[11px] font-bold" title="Grant Full 100-Item Mock access">🔒 Grant Mock</button>`}
-              <select id="renew-sel-${acc.usernameKey}" class="bg-navy-950 border border-sky-500/40 rounded-lg px-2 py-1 text-[10px] font-bold text-sky-300">
+                ? `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-rose-600/40 border border-emerald-400/60 text-emerald-200 text-xs font-bold" title="Click to revoke Full Mock access"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Mock ON</button>`
+                : `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-navy-800 hover:bg-emerald-600/35 border border-slate-600 hover:border-emerald-400 text-slate-300 hover:text-emerald-200 text-xs font-bold" title="Grant Full 100-Item Mock access"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Grant Mock</button>`}
+              <select id="renew-sel-${acc.usernameKey}" class="bg-navy-950 border border-sky-500/40 rounded-lg px-2 py-1 text-xs font-bold text-sky-300">
                 <option value="1d">+1 Day</option>
                 <option value="3d">+3 Days</option>
                 <option value="7d" selected>+1 Week</option>
@@ -344,12 +344,12 @@ class AgriBoardApp {
                 <option value="90d">+3 Months</option>
                 <option value="unli">♾️ Unli</option>
               </select>
-              <button onclick="app.adminRenewAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-sky-600/25 hover:bg-sky-600/45 border border-sky-400/50 text-sky-200 text-[11px] font-bold">Renew</button>
-              <button onclick="app.adminResetUserPassword('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-amber-600/25 hover:bg-amber-600/45 border border-amber-400/50 text-amber-200 text-[11px] font-bold">🔑 Reset PW</button>
+              <button onclick="app.adminRenewAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-sky-600/25 hover:bg-sky-600/45 border border-sky-400/50 text-sky-200 text-xs font-bold">Renew</button>
+              <button onclick="app.adminResetUserPassword('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-amber-600/25 hover:bg-amber-600/45 border border-amber-400/50 text-amber-200 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-key-round"/></svg> Reset PW</button>
               ${acc.revoked
-                ? `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-[11px] font-bold">Restore</button>`
-                : `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-600/25 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-[11px] font-bold">Revoke</button>`}
-              <button onclick="app.adminRemoveAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-700 border border-rose-500/60 text-rose-100 text-[11px] font-bold">🗑️ Remove</button>
+                ? `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-xs font-bold">Restore</button>`
+                : `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-600/25 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-xs font-bold">Revoke</button>`}
+              <button onclick="app.adminRemoveAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-700 border border-rose-500/60 text-rose-100 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg> Remove</button>
             </div>`;
 
         return `
@@ -363,7 +363,7 @@ class AgriBoardApp {
                 ${revokedTag}
               </div>
             </td>
-            <td class="py-2.5 font-mono text-[11px] text-sky-300">${this.escapeHtml(acc.accessCodeUsed)}</td>
+            <td class="py-2.5 font-mono text-xs text-sky-300">${this.escapeHtml(acc.accessCodeUsed)}</td>
             <td class="py-2.5 text-center">${daysBadge}</td>
             <td class="py-2.5 text-right">${actionBtn}</td>
           </tr>
@@ -400,7 +400,7 @@ class AgriBoardApp {
     if (codeHint) {
       codeHint.textContent = isActive
         ? 'Leave blank to claim 5 Days FREE, or enter an Owner Access Code / Master Passcode.'
-        : 'Ask the 👑 Owner for an invite code (Owner can enter master passcode here).';
+        : 'Ask the <svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> Owner for an invite code (Owner can enter master passcode here).';
     }
 
     // Update Admin Promo Pill
@@ -408,10 +408,10 @@ class AgriBoardApp {
     if (adminPill) {
       if (isActive) {
         adminPill.textContent = `🟢 ACTIVE (${hrsLeft}h left • ${p.trialDays || 5}d Free)`;
-        adminPill.className = 'px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[10px] font-black text-emerald-300';
+        adminPill.className = 'px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-black text-emerald-300';
       } else {
         adminPill.textContent = '🔒 ENDED (Access Code Required)';
-        adminPill.className = 'px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-[10px] font-black text-rose-300';
+        adminPill.className = 'px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-xs font-black text-rose-300';
       }
     }
   }
@@ -499,19 +499,19 @@ class AgriBoardApp {
     }
     tbody.innerHTML = users.map(u => {
       const badgeHtml = u.isOwner
-        ? `<span class="px-2 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 font-black text-[10px]">👑 OWNER</span>`
+        ? `<span class="px-2 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 font-black text-xs"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`
         : (u.title
-            ? `<span class="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-[10px]">🏷️ ${this.escapeHtml(u.title)}</span>`
-            : `<span class="text-slate-500 text-[10px]">No custom title</span>`);
+            ? `<span class="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${this.escapeHtml(u.title)}</span>`
+            : `<span class="text-slate-500 text-xs">No custom title</span>`);
       return `
         <tr>
-          <td class="py-2.5 font-bold text-white">${this.escapeHtml(u.name)} <span class="text-[10px] text-slate-500 font-mono">(${u.id.slice(0,8)})</span></td>
+          <td class="py-2.5 font-bold text-white">${this.escapeHtml(u.name)} <span class="text-xs text-slate-500 font-mono">(${u.id.slice(0,8)})</span></td>
           <td class="py-2.5">${badgeHtml}</td>
-          <td class="py-2.5 text-center font-mono text-[11px] text-slate-300">${(u.xp || 0).toLocaleString()} XP • ${u.rp || 1200} RP</td>
+          <td class="py-2.5 text-center font-mono text-xs text-slate-300">${(u.xp || 0).toLocaleString()} XP • ${u.rp || 1200} RP</td>
           <td class="py-2.5 text-right space-x-1.5">
-            <button onclick="app.adminPromptTitle('${u.id}', '${this.escapeHtml(u.name)}', '${this.escapeHtml(u.title || '')}')" class="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/40 border border-sky-400/40 text-sky-300 text-[11px] font-bold">Give Title</button>
-            <button onclick="app.adminToggleOwner('${u.id}', ${!u.isOwner})" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-300 text-[11px] font-bold">${u.isOwner ? 'Remove Owner' : 'Make Owner'}</button>
-            <button onclick="app.adminDeleteUser('${u.id}', '${this.escapeHtml(u.name)}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 text-[11px] font-bold">Remove</button>
+            <button onclick="app.adminPromptTitle('${u.id}', '${this.escapeHtml(u.name)}', '${this.escapeHtml(u.title || '')}')" class="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/40 border border-sky-400/40 text-sky-300 text-xs font-bold">Give Title</button>
+            <button onclick="app.adminToggleOwner('${u.id}', ${!u.isOwner})" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-300 text-xs font-bold">${u.isOwner ? 'Remove Owner' : 'Make Owner'}</button>
+            <button onclick="app.adminDeleteUser('${u.id}', '${this.escapeHtml(u.name)}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 text-xs font-bold">Remove</button>
           </td>
         </tr>
       `;
@@ -869,28 +869,11 @@ class AgriBoardApp {
     const target = document.getElementById(`view-${viewName}`);
     if (target) target.classList.remove('hidden');
 
-    // Update top nav & sidebar active styling
-    document.querySelectorAll('.topnav-btn').forEach(b => {
-      b.className = 'topnav-btn px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-300 hover:text-white hover:bg-navy-800/80';
-    });
-    const topMap = { 'dashboard': 'topnav-dashboard', 'mock-exam': 'topnav-mock-exam', 'pvp-lobby': 'topnav-pvp', 'pvp-arena': 'topnav-pvp', 'leaderboards': 'topnav-leaderboards', 'vault': 'topnav-vault', 'progress': 'topnav-progress' };
-    const topEl = document.getElementById(topMap[viewName]);
-    if (topEl) {
-      topEl.className = 'topnav-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 nav-home-active text-white';
-    }
-
-    document.querySelectorAll('.side-btn').forEach(b => {
-      if (b.id === 'side-pvp') {
-        b.className = 'side-btn w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white sidebar-pvp-glow hover:brightness-110 transition-all';
-      } else {
-        b.className = 'side-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-navy-800/80 hover:text-white';
-      }
-    });
+    // Sidebar (PC) and tab bar (phone) active state
     const sideKey = (viewName === 'pvp-lobby' || viewName === 'pvp-arena') ? 'side-pvp' : `side-${viewName}`;
-    const sideEl = document.getElementById(sideKey);
-    if (sideEl && sideKey !== 'side-pvp') {
-      sideEl.className = 'side-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold sidebar-item-active';
-    }
+    document.querySelectorAll('.side-btn').forEach(b => b.classList.toggle('sidebar-item-active', b.id === sideKey));
+    const tabView = viewName === 'pvp-arena' ? 'pvp-lobby' : viewName;
+    document.querySelectorAll('.tabbar-btn[data-view]').forEach(b => b.classList.toggle('is-active', b.dataset.view === tabView));
 
     if (viewName === 'leaderboards') this.renderLeaderboards();
     if (viewName === 'vault') this.renderVault();
@@ -1105,12 +1088,12 @@ class AgriBoardApp {
         const isActive = (!this.problemSolvingOnly && this.activeStudyArea === area.id && this.activeStudyLevel === lvl);
 
         html += `
-          <button onclick="app.selectStudyLevel(${area.id}, ${lvl})" class="shrink-0 w-32 text-left rounded-lg px-2.5 py-1.5 ${isActive ? 'level-tile-active' : 'level-tile'}">
+          <button onclick="app.selectStudyLevel(${area.id}, ${lvl})" class="shrink-0 w-36 text-left rounded-xl px-3 py-2 ${isActive ? 'level-tile-active' : 'level-tile'}">
             <div class="flex items-center justify-between gap-1">
-              <span class="text-[11px] font-extrabold text-white">A${area.id} • Lv ${lvl}</span>
-              <span class="text-[10px] font-mono font-bold ${lst.pct === 100 ? 'text-emerald-400' : 'text-sky-300'}">${lst.pct.toFixed(0)}%</span>
+              <span class="text-xs font-extrabold text-white">A${area.id} • Lv ${lvl}</span>
+              <span class="text-xs font-mono font-bold ${lst.pct === 100 ? 'text-emerald-400' : 'text-sky-300'}">${lst.pct.toFixed(0)}%</span>
             </div>
-            <div class="text-[10px] font-mono text-slate-400 mt-0.5">${start}–${end} (${count})</div>
+            <div class="text-[11px] font-mono text-slate-400 mt-0.5 whitespace-nowrap">${start}–${end} · ${count}</div>
           </button>
         `;
       }
@@ -1122,10 +1105,10 @@ class AgriBoardApp {
         html += `
           <button onclick="app.openProblemSolvingMode(${area.id})" class="shrink-0 w-36 text-left rounded-lg px-2.5 py-1.5 transition-all ${isPsActive ? 'bg-gradient-to-b from-amber-500/30 to-orange-900/50 border-2 border-amber-400 shadow-lg shadow-amber-500/25' : 'bg-amber-950/35 border border-amber-500/40 hover:border-amber-400'}">
             <div class="flex items-center justify-between gap-1">
-              <span class="text-[11px] font-extrabold text-amber-300">🧮 A${area.id} (PS)</span>
-              <span class="text-[10px] font-mono font-bold ${ps.pct === 100 ? 'text-emerald-400' : 'text-amber-300'}">${ps.pct.toFixed(0)}%</span>
+              <span class="text-xs font-extrabold text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> A${area.id} (PS)</span>
+              <span class="text-xs font-mono font-bold ${ps.pct === 100 ? 'text-emerald-400' : 'text-amber-300'}">${ps.pct.toFixed(0)}%</span>
             </div>
-            <div class="text-[10px] font-mono text-amber-200/75 mt-0.5">${ps.total} problems</div>
+            <div class="text-xs font-mono text-amber-200/75 mt-0.5">${ps.total} problems</div>
           </button>
         `;
       }
@@ -1145,8 +1128,8 @@ class AgriBoardApp {
     if (strip) strip.classList.add('hidden');
     const toggleBtn = document.getElementById('btn-toggle-prob-only');
     if (toggleBtn) {
-      toggleBtn.className = 'px-2.5 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/30 border border-amber-400/50 text-[10px] font-extrabold text-amber-300 transition-all';
-      toggleBtn.textContent = '🧮 Problem Solving Only (Area 1–3)';
+      toggleBtn.className = 'px-2.5 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/30 border border-amber-400/50 text-xs font-extrabold text-amber-300 transition-all';
+      toggleBtn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Problem Solving Only (Area 1–3)';
     }
 
     // Jump to first unseen/unmastered item in this level
@@ -1172,8 +1155,8 @@ class AgriBoardApp {
 
     const toggleBtn = document.getElementById('btn-toggle-prob-only');
     if (toggleBtn) {
-      toggleBtn.className = 'px-2.5 py-1 rounded-full bg-amber-500 text-navy-950 border border-amber-300 text-[10px] font-black transition-all';
-      toggleBtn.textContent = `🧮 Problem Solving Active (Area ${areaId})`;
+      toggleBtn.className = 'px-2.5 py-1 rounded-full bg-amber-500 text-navy-950 border border-amber-300 text-xs font-black transition-all';
+      toggleBtn.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Problem Solving Active (Area ${areaId})`;
     }
 
     [1, 2, 3].forEach(id => {
@@ -1181,8 +1164,8 @@ class AgriBoardApp {
       if (!btn) return;
       const activeColors = { 1: 'bg-sky-600 text-white', 2: 'bg-emerald-600 text-white', 3: 'bg-purple-600 text-white' };
       btn.className = id === areaId
-        ? `px-2.5 py-1 rounded-lg text-[11px] font-extrabold ${activeColors[id]}`
-        : 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50';
+        ? `px-2.5 py-1 rounded-lg text-xs font-extrabold ${activeColors[id]}`
+        : 'px-2.5 py-1 rounded-lg text-xs font-bold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50';
     });
 
     this.renderLevelTiles();
@@ -1239,7 +1222,7 @@ class AgriBoardApp {
     const deckPct = this.currentDeck.length > 0 ? (masteredInDeck / this.currentDeck.length) * 100 : 0;
 
     if (this.problemSolvingOnly) {
-      document.getElementById('study-header-title').textContent = `🧮 Study Session — Area-${this.activeStudyArea} Level (PS) (${this.currentDeck.length} Problems)`;
+      document.getElementById('study-header-title').innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Study Session — Area-${this.activeStudyArea} Level (PS) (${this.currentDeck.length} Problems)`;
       document.getElementById('study-q-num').textContent = `Problem ${this.currentCardIdx + 1} / ${this.currentDeck.length}`;
       document.getElementById('study-mini-lvl-label').textContent = `Area-${this.activeStudyArea} Level (PS)`;
       document.getElementById('study-mini-lvl-txt').textContent = `${masteredInDeck} / ${this.currentDeck.length} (${deckPct.toFixed(0)}%)`;
@@ -1288,8 +1271,8 @@ class AgriBoardApp {
         <div class="study-img-wrapper relative rounded-xl overflow-hidden border border-blue-900/60 bg-white inline-block">
           <img src="${this.fixAssetPath(src)}" class="study-solution-img max-h-56 p-1.5 object-contain blur-lg scale-105 opacity-60 transition-all duration-300 select-none pointer-events-none" />
           <div class="study-img-veil absolute inset-0 bg-navy-950/65 backdrop-blur-md flex flex-col items-center justify-center p-3 text-center">
-            <span class="text-xs font-extrabold text-amber-300">🔒 Solution Image Hidden</span>
-            <span class="text-[10px] text-slate-300 mt-0.5">Select an answer or press Show Answer to reveal clearly</span>
+            <span class="text-xs font-extrabold text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Solution Image Hidden</span>
+            <span class="text-xs text-slate-300 mt-0.5">Select an answer or press Show Answer to reveal clearly</span>
           </div>
         </div>
       `).join('');
@@ -1360,7 +1343,7 @@ class AgriBoardApp {
       if (wrongExp) {
         parts.push(`
           <div class="rounded-lg bg-rose-950/55 border border-rose-400/45 px-3 py-2 text-xs text-rose-100 leading-relaxed">
-            <span class="font-extrabold text-rose-300">❌ Why "${this.escapeHtml(chosen)}" Is Wrong: </span>${this.escapeHtml(wrongExp)}
+            <span class="font-extrabold text-rose-300"><svg class="ic" aria-hidden="true"><use href="#i-circle-x"/></svg> Why "${this.escapeHtml(chosen)}" Is Wrong: </span>${this.escapeHtml(wrongExp)}
           </div>
         `);
       }
@@ -1370,7 +1353,7 @@ class AgriBoardApp {
     if (ansExp) {
       parts.push(`
         <div class="rounded-lg bg-emerald-950/55 border border-emerald-400/40 px-3 py-2 text-xs text-emerald-100 leading-relaxed">
-          <span class="font-extrabold text-emerald-300">✅ Why "${this.escapeHtml(ans)}" Is Correct: </span>${this.escapeHtml(ansExp)}
+          <span class="font-extrabold text-emerald-300"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> Why "${this.escapeHtml(ans)}" Is Correct: </span>${this.escapeHtml(ansExp)}
         </div>
       `);
     }
@@ -1473,7 +1456,7 @@ class AgriBoardApp {
 
     if (dueNowIdx >= 0) {
       this.currentCardIdx = dueNowIdx;
-      this.requeueBannerText = '🔴 Anki Re-Review (Due Now!)';
+      this.requeueBannerText = '<span class="inline-block w-2 h-2 rounded-full bg-rose-400 align-middle"></span> Anki Re-Review (Due Now!)';
       this.renderStudyCard();
       return;
     }
@@ -1500,7 +1483,7 @@ class AgriBoardApp {
       });
       if (earliestLearningIdx >= 0) {
         nextIdx = earliestLearningIdx;
-        this.requeueBannerText = '🔴 Anki Learning Queue';
+        this.requeueBannerText = '<span class="inline-block w-2 h-2 rounded-full bg-rose-400 align-middle"></span> Anki Learning Queue';
       } else {
         const anyUnseen = this.currentDeck.findIndex(it => !this.user.srs[it.id]);
         nextIdx = anyUnseen >= 0 ? anyUnseen : 0;
@@ -1516,8 +1499,8 @@ class AgriBoardApp {
     const startNum = (this.activeStudyLevel - 1) * 100 + 1;
     const endNum = startNum + this.currentDeck.length - 1;
     document.getElementById('minimap-title').textContent = this.problemSolvingOnly
-      ? `🧮 Area ${this.activeStudyArea} Problem Solving Minimap (${this.currentDeck.length} Problems)`
-      : `🗺️ 100-Item Level Minimap (Level ${this.activeStudyLevel}: ${startNum} – ${endNum})`;
+      ? `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Area ${this.activeStudyArea} Problem Solving Minimap (${this.currentDeck.length} Problems)`
+      : `<svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> 100-Item Level Minimap (Level ${this.activeStudyLevel}: ${startNum} – ${endNum})`;
 
     let cAgain = 0, cHard = 0, cGood = 0, cEasy = 0, unseen = 0;
     map.innerHTML = this.currentDeck.map((it, idx) => {
@@ -1548,7 +1531,7 @@ class AgriBoardApp {
         cls += ' ring-2 ring-white scale-110 z-10 shadow-md';
       }
       return `
-        <button onclick="app.jumpToStudyCard(${idx})" class="h-6 rounded text-[10px] font-mono transition-all ${cls}" title="${this.problemSolvingOnly ? 'Problem #' + (idx + 1) : 'Item #' + it.index}">
+        <button onclick="app.jumpToStudyCard(${idx})" class="h-6 rounded text-xs font-mono transition-all ${cls}" title="${this.problemSolvingOnly ? 'Problem #' + (idx + 1) : 'Item #' + it.index}">
           ${this.problemSolvingOnly ? idx + 1 : it.index}
         </button>
       `;
@@ -1594,7 +1577,7 @@ class AgriBoardApp {
       const data = await res.json();
       const rooms = (data.waiting || []).filter(r => r.p1_name !== this.user.name);
       if (rooms.length === 0) {
-        listEl.innerHTML = `<div class="text-slate-400 text-[11px]">No other reviewees waiting right now. Click <strong>Find Match</strong> above to open a room!</div>`;
+        listEl.innerHTML = `<div class="text-slate-400 text-xs">No other reviewees waiting right now. Click <strong>Find Match</strong> above to open a room!</div>`;
         return;
       }
       listEl.innerHTML = rooms.map(r => {
@@ -1602,11 +1585,11 @@ class AgriBoardApp {
         return `
           <div class="flex items-center justify-between gap-2 bg-navy-900/90 border border-purple-500/35 rounded-lg px-3 py-2">
             <div>
-              <div class="text-xs font-bold text-white">${this.escapeHtml(r.p1_name)} <span class="text-[10px] font-mono text-amber-300">(${r.p1_rp || 1200} RP)</span></div>
-              <div class="text-[10px] text-sky-300">${lvlTxt} • ${r.deck_size} Cards</div>
+              <div class="text-xs font-bold text-white">${this.escapeHtml(r.p1_name)} <span class="text-xs font-mono text-amber-300">(${r.p1_rp || 1200} RP)</span></div>
+              <div class="text-xs text-sky-300">${lvlTxt} • ${r.deck_size} Cards</div>
             </div>
-            <button onclick="app.joinWaitingPvpRoom(${r.area_id}, '${r.level_val}', ${r.deck_size})" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-extrabold">
-              ⚔️ Accept Duel
+            <button onclick="app.joinWaitingPvpRoom(${r.area_id}, '${r.level_val}', ${r.deck_size})" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold">
+              <svg class="ic" aria-hidden="true"><use href="#i-swords"/></svg> Accept Duel
             </button>
           </div>
         `;
@@ -1800,7 +1783,7 @@ class AgriBoardApp {
         const oppLap = oppIsP1 ? m.p1_lapses : m.p2_lapses;
 
         if (oppLap > this.pvpOpponent.lapses) {
-          this.pvpOpponent.status = '❌ Lapsed! Card cycled back';
+          this.pvpOpponent.status = '<svg class="ic" aria-hidden="true"><use href="#i-circle-x"/></svg> Lapsed! Card cycled back';
         } else if (oppClr > this.pvpOpponent.cleared) {
           this.pvpOpponent.status = `Cleared ${oppClr}/${this.pvpTotalCards}!`;
         }
@@ -1981,16 +1964,16 @@ class AgriBoardApp {
     const pBtn = document.getElementById('side-lb-tab-prog');
     const vBtn = document.getElementById('side-lb-tab-pvp');
     if (tab === 'prog') {
-      pBtn.className = 'py-1.5 rounded-lg text-[11px] font-bold bg-indigo-600 text-white';
-      vBtn.className = 'py-1.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-white';
+      pBtn.className = 'py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white';
+      vBtn.className = 'py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white';
     } else {
-      vBtn.className = 'py-1.5 rounded-lg text-[11px] font-bold bg-purple-600 text-white';
-      pBtn.className = 'py-1.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-white';
+      vBtn.className = 'py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white';
+      pBtn.className = 'py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white';
     }
   }
 
   getTierLabel(rp) {
-    if (rp >= 1700) return { label: '★ Legend', cls: 'bg-amber-500/20 text-amber-300 border-amber-400/50' };
+    if (rp >= 1700) return { label: '<svg class="ic" aria-hidden="true"><use href="#i-star"/></svg> Legend', cls: 'bg-amber-500/20 text-amber-300 border-amber-400/50' };
     if (rp >= 1450) return { label: 'Diamond', cls: 'bg-sky-500/20 text-sky-300 border-sky-400/50' };
     if (rp >= 1250) return { label: 'Platinum', cls: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/50' };
     return { label: 'Gold ABE', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50' };
@@ -1998,10 +1981,10 @@ class AgriBoardApp {
 
   renderTitleBadge(p) {
     if (p.isOwner) {
-      return `<span class="ml-1 px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 font-black text-[9px] uppercase">👑 OWNER</span>`;
+      return `<span class="ml-1 px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 font-black text-xs uppercase"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`;
     }
     if (p.title) {
-      return `<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-[9px]">${this.escapeHtml(p.title)}</span>`;
+      return `<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-xs">${this.escapeHtml(p.title)}</span>`;
     }
     return '';
   }
@@ -2053,7 +2036,7 @@ class AgriBoardApp {
     const progRowsHtml = progPlayers.length > 0
       ? progPlayers.map((p, i) => `
         <tr class="${p.isUser ? 'bg-blue-600/20 font-bold text-white' : 'text-slate-300'}">
-          <td class="py-1.5 font-mono ${i === 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">${i === 0 ? '👑' : i + 1}</td>
+          <td class="py-1.5 font-mono ${i === 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">${i === 0 ? '<svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg>' : i + 1}</td>
           <td class="py-1.5 ${p.isUser ? 'text-sky-300' : 'text-white'}">
             <div class="flex flex-wrap items-center gap-0.5">
               <span class="truncate max-w-[100px]">${this.escapeHtml(p.name)}</span>
@@ -2066,7 +2049,7 @@ class AgriBoardApp {
           <td class="py-1.5 text-right font-mono text-amber-300">${(p.xp || 0).toLocaleString()}</td>
         </tr>
       `).join('')
-      : `<tr><td colspan="6" class="py-4 text-center text-slate-400 text-[11px]">No reviewees yet. Start studying to claim #1!</td></tr>`;
+      : `<tr><td colspan="6" class="py-4 text-center text-slate-400 text-xs">No reviewees yet. Start studying to claim #1!</td></tr>`;
 
     const pvpRowsHtml = pvpPlayers.length > 0
       ? pvpPlayers.map((p, i) => {
@@ -2075,14 +2058,14 @@ class AgriBoardApp {
         const bestStr = p.bestTimeSec ? `${Number(p.bestTimeSec).toFixed(1)}s` : '—';
         return `
           <tr class="${p.isUser ? 'bg-purple-600/20 font-bold text-white' : 'text-slate-300'}">
-            <td class="py-1.5 font-mono ${i === 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">${i === 0 ? '👑' : i + 1}</td>
+            <td class="py-1.5 font-mono ${i === 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">${i === 0 ? '<svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg>' : i + 1}</td>
             <td class="py-1.5 ${p.isUser ? 'text-purple-200' : 'text-white'}">
               <div class="flex flex-wrap items-center gap-0.5">
                 <span class="truncate max-w-[85px]">${this.escapeHtml(p.name)}</span>
                 ${this.renderTitleBadge(p)}
               </div>
             </td>
-            <td class="py-1.5 text-center font-mono text-[11px] whitespace-nowrap">
+            <td class="py-1.5 text-center font-mono text-xs whitespace-nowrap">
               <span class="text-emerald-400 font-extrabold">${wins}W</span>
               <span class="text-slate-500 mx-0.5">-</span>
               <span class="text-rose-400 font-bold">${losses}L</span>
@@ -2092,7 +2075,7 @@ class AgriBoardApp {
           </tr>
         `;
       }).join('')
-      : `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-[11px]">Finish a 1v1 PvP match to rank on the real PvP board!</td></tr>`;
+      : `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">Finish a 1v1 PvP match to rank on the real PvP board!</td></tr>`;
 
     const sideProg = document.getElementById('side-lb-prog-body');
     const sidePvp = document.getElementById('side-lb-pvp-body');
@@ -2124,7 +2107,7 @@ class AgriBoardApp {
     document.getElementById('vault-result-count').textContent = `Showing ${slice.length} of ${filtered.length.toLocaleString()} items`;
     document.getElementById('vault-list').innerHTML = slice.map(it => `
       <div class="panel p-4 space-y-1.5">
-        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
           <div class="flex items-center gap-2">
             <span class="font-mono font-bold text-sky-400">#${it.id}</span>
             <span class="px-2 py-0.5 rounded bg-navy-950 border border-blue-900/60 text-slate-300 font-semibold">Area ${it.area} • ${it.levelLabel}</span>
@@ -2135,7 +2118,7 @@ class AgriBoardApp {
         <div class="text-sm font-bold text-white">${this.escapeHtml(it.question)}</div>
         ${it.images?.length ? `<div class="flex gap-2 pt-1">${it.images.map(s => `<img src="${this.fixAssetPath(s)}" class="max-h-36 rounded bg-white p-1"/>`).join('')}</div>` : ''}
         <div class="text-xs font-bold text-emerald-400">Answer: ${this.escapeHtml(it.answer)}</div>
-        ${it.rationale ? `<div class="text-[11px] text-slate-400 whitespace-pre-line">${this.escapeHtml(it.rationale)}</div>` : ''}
+        ${it.rationale ? `<div class="text-xs text-slate-400 whitespace-pre-line">${this.escapeHtml(it.rationale)}</div>` : ''}
       </div>
     `).join('');
   }
@@ -2167,7 +2150,7 @@ class AgriBoardApp {
               <span class="text-white">Area ${area.id} • Level ${lvl}</span>
               <span class="font-mono text-sky-300">${lst.pct.toFixed(0)}%</span>
             </div>
-            <div class="text-[11px] font-mono text-slate-400">Items ${start} – ${end} (${lst.mastered}/${lst.total})</div>
+            <div class="text-xs font-mono text-slate-400">Items ${start} – ${end} (${lst.mastered}/${lst.total})</div>
             <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
               <div class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full" style="width: ${lst.pct}%"></div>
             </div>
@@ -2179,10 +2162,10 @@ class AgriBoardApp {
         html += `
           <div onclick="app.openProblemSolvingMode(${area.id});" class="panel p-3.5 cursor-pointer border border-amber-500/40 hover:border-amber-400 transition-all space-y-2">
             <div class="flex justify-between text-xs font-extrabold">
-              <span class="text-amber-300">🧮 Area-${area.id} Level (PS)</span>
+              <span class="text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Area-${area.id} Level (PS)</span>
               <span class="font-mono text-amber-300">${ps.pct.toFixed(0)}%</span>
             </div>
-            <div class="text-[11px] font-mono text-slate-400">Problem Solving Only (${ps.mastered}/${ps.total})</div>
+            <div class="text-xs font-mono text-slate-400">Problem Solving Only (${ps.mastered}/${ps.total})</div>
             <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
               <div class="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full" style="width: ${ps.pct}%"></div>
             </div>
@@ -2203,6 +2186,14 @@ class AgriBoardApp {
       if (!res.ok || !Array.isArray(data.messages)) return;
       this.renderGlobalChat(data.messages);
     } catch (e) {}
+  }
+
+  openMoreSheet() {
+    document.getElementById('more-sheet')?.classList.remove('hidden');
+  }
+
+  closeMoreSheet() {
+    document.getElementById('more-sheet')?.classList.add('hidden');
   }
 
   openMobileChat() {
@@ -2228,18 +2219,18 @@ class AgriBoardApp {
     if (boxes.length === 0) return;
 
     const html = (!messages || messages.length === 0)
-      ? `<div class="text-slate-500 text-[10px] text-center py-6">No messages yet. Say hi! 👋</div>`
+      ? `<div class="text-slate-500 text-xs text-center py-6">No messages yet. Say hi! <svg class="ic" aria-hidden="true"><use href="#i-hand"/></svg></div>`
       : messages.map(m => {
         const badge = m.isOwner
-          ? `<span class="px-1 py-0.2 rounded bg-amber-400 text-navy-950 font-black text-[8px]">OWNER</span>`
-          : (m.title ? `<span class="px-1 rounded bg-sky-500/20 text-sky-300 font-bold text-[8px]">${this.escapeHtml(m.title)}</span>` : '');
+          ? `<span class="px-1 py-0.2 rounded bg-amber-400 text-navy-950 font-black text-xs">OWNER</span>`
+          : (m.title ? `<span class="px-1 rounded bg-sky-500/20 text-sky-300 font-bold text-xs">${this.escapeHtml(m.title)}</span>` : '');
         return `
           <div class="bg-navy-950/75 border border-blue-900/35 rounded-lg px-2.5 py-1.5 leading-snug">
             <div class="flex items-center gap-1 flex-wrap">
-              <span class="font-bold ${m.isOwner ? 'text-amber-300' : 'text-emerald-300'} text-[10px]">${this.escapeHtml(m.name)}</span>
+              <span class="font-bold ${m.isOwner ? 'text-amber-300' : 'text-emerald-300'} text-xs">${this.escapeHtml(m.name)}</span>
               ${badge}
             </div>
-            <div class="text-slate-200 text-[11px] break-words mt-0.5">${this.escapeHtml(m.text)}</div>
+            <div class="text-slate-200 text-xs break-words mt-0.5">${this.escapeHtml(m.text)}</div>
           </div>
         `;
       }).join('');
@@ -2352,14 +2343,14 @@ class AgriBoardApp {
       box.innerHTML = data.feedback.map(f => `
         <div class="bg-navy-950 border border-teal-500/30 rounded-xl p-3 flex items-start justify-between gap-3">
           <div class="space-y-1">
-            <div class="flex items-center gap-2 text-[11px]">
+            <div class="flex items-center gap-2 text-xs">
               <span class="font-bold text-white">${this.escapeHtml(f.name)}</span>
-              <span class="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-bold text-[10px]">${this.escapeHtml(f.category)}</span>
-              <span class="text-slate-500 font-mono text-[10px]">${new Date(f.createdAt).toLocaleDateString()}</span>
+              <span class="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-bold text-xs">${this.escapeHtml(f.category)}</span>
+              <span class="text-slate-500 font-mono text-xs">${new Date(f.createdAt).toLocaleDateString()}</span>
             </div>
             <div class="text-xs text-slate-200 whitespace-pre-line">${this.escapeHtml(f.message)}</div>
           </div>
-          <button onclick="app.adminDeleteFeedback('${f.id}')" class="px-2 py-1 rounded bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-[10px] font-bold shrink-0">Delete</button>
+          <button onclick="app.adminDeleteFeedback('${f.id}')" class="px-2 py-1 rounded bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-bold shrink-0">Delete</button>
         </div>
       `).join('');
     } catch (e) {}
@@ -2462,7 +2453,7 @@ class AgriBoardApp {
       const res = await this.apiCall('POST', { action: 'admin_list_reviewers' });
       const data = await res.json();
       if (!res.ok) {
-        listBox.innerHTML = `<div class="text-xs text-amber-300 py-2">⚠️ Reviewer submissions table not set up yet in Supabase. Run the setup SQL in Supabase SQL Editor.</div>`;
+        listBox.innerHTML = `<div class="text-xs text-amber-300 py-2"><svg class="ic" aria-hidden="true"><use href="#i-triangle-alert"/></svg> Reviewer submissions table not set up yet in Supabase. Run the setup SQL in Supabase SQL Editor.</div>`;
         return;
       }
 
@@ -2476,10 +2467,10 @@ class AgriBoardApp {
           contribBox.innerHTML = '';
         } else {
           contribBox.innerHTML = contribs.map(c => `
-            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-950/70 border border-indigo-400/40 text-[11px]">
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-950/70 border border-indigo-400/40 text-xs">
               <span class="font-bold text-white">${this.escapeHtml(c.senderName)}</span>
-              <span class="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono font-bold text-[10px]">${c.count} sent</span>
-              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(c.usernameKey)}', '${this.escapeHtml(c.senderName)}')" class="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-500/50 border border-emerald-400/40 text-emerald-200 font-bold text-[10px]">🎁 +Days</button>
+              <span class="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono font-bold text-xs">${c.count} sent</span>
+              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(c.usernameKey)}', '${this.escapeHtml(c.senderName)}')" class="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-500/50 border border-emerald-400/40 text-emerald-200 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-gift"/></svg> +Days</button>
             </div>
           `).join('');
         }
@@ -2487,7 +2478,7 @@ class AgriBoardApp {
 
       const list = data.reviewers || [];
       if (list.length === 0) {
-        listBox.innerHTML = `<div class="text-xs text-slate-400 py-2">No reviewers submitted yet. Reviewees can click "📤 Submit Reviewer (.docx)" in the sidebar or mobile chat.</div>`;
+        listBox.innerHTML = `<div class="text-xs text-slate-400 py-2">No reviewers submitted yet. Reviewees can click "<svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Submit Reviewer (.docx)" in the sidebar or mobile chat.</div>`;
         return;
       }
 
@@ -2501,21 +2492,21 @@ class AgriBoardApp {
         return `
           <div class="bg-navy-950 border ${isFreed ? 'border-emerald-500/30' : 'border-indigo-500/35'} rounded-xl p-3 flex flex-wrap items-start justify-between gap-3">
             <div class="space-y-1 min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <div class="flex flex-wrap items-center gap-1.5 text-xs">
                 <span class="font-extrabold text-white">${this.escapeHtml(r.senderName)}</span>
-                <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 font-mono font-bold text-[10px]">${userTotal} total sent</span>
-                <span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold text-[10px]">${this.escapeHtml(r.area)}</span>
-                <span class="text-slate-400 font-mono text-[10px]">${sizeMb} • ${new Date(r.createdAt).toLocaleDateString()}</span>
-                ${isFreed ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">✅ Added (File Freed)</span>` : ''}
+                <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 font-mono font-bold text-xs">${userTotal} total sent</span>
+                <span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold text-xs">${this.escapeHtml(r.area)}</span>
+                <span class="text-slate-400 font-mono text-xs">${sizeMb} • ${new Date(r.createdAt).toLocaleDateString()}</span>
+                ${isFreed ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> Added (File Freed)</span>` : ''}
               </div>
-              <div class="text-xs font-bold text-sky-200 break-words">📄 ${this.escapeHtml(r.title)} <span class="font-normal text-slate-400">(${this.escapeHtml(r.fileName)})</span></div>
-              ${r.notes ? `<div class="text-[11px] text-slate-300 whitespace-pre-line">${this.escapeHtml(r.notes)}</div>` : ''}
+              <div class="text-xs font-bold text-sky-200 break-words"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg> ${this.escapeHtml(r.title)} <span class="font-normal text-slate-400">(${this.escapeHtml(r.fileName)})</span></div>
+              ${r.notes ? `<div class="text-xs text-slate-300 whitespace-pre-line">${this.escapeHtml(r.notes)}</div>` : ''}
             </div>
             <div class="flex flex-wrap items-center gap-1.5 shrink-0">
-              ${r.fileUrl ? `<a href="${this.escapeHtml(r.fileUrl)}" target="_blank" download="${this.escapeHtml(r.fileName)}" class="px-2.5 py-1 rounded-lg bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/50 text-sky-200 text-[10px] font-bold">⬇ Download</a>` : ''}
-              ${!isFreed ? `<button onclick="app.adminMarkReviewerAdded('${r.id}')" title="Deletes file from Supabase Storage to free space while keeping the user's contributor count" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-[10px] font-bold">✅ Added & Free Space</button>` : ''}
-              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(r.usernameKey)}', '${this.escapeHtml(r.senderName)}')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-200 text-[10px] font-bold">🎁 Reward Days</button>
-              <button onclick="app.adminDeleteReviewer('${r.id}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-[10px] font-bold">Delete</button>
+              ${r.fileUrl ? `<a href="${this.escapeHtml(r.fileUrl)}" target="_blank" download="${this.escapeHtml(r.fileName)}" class="px-2.5 py-1 rounded-lg bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/50 text-sky-200 text-xs font-bold">⬇ Download</a>` : ''}
+              ${!isFreed ? `<button onclick="app.adminMarkReviewerAdded('${r.id}')" title="Deletes file from Supabase Storage to free space while keeping the user's contributor count" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> Added & Free Space</button>` : ''}
+              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(r.usernameKey)}', '${this.escapeHtml(r.senderName)}')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-200 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-gift"/></svg> Reward Days</button>
+              <button onclick="app.adminDeleteReviewer('${r.id}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-bold">Delete</button>
             </div>
           </div>
         `;
@@ -2636,7 +2627,7 @@ class AgriBoardApp {
         const bodyHtml = this.formatMathLineContent(rest);
         return `
           <div class="flex flex-col sm:flex-row sm:items-baseline gap-1.5 py-1">
-            <span class="px-2 py-0.5 rounded-md border text-[10px] font-extrabold uppercase tracking-wider shrink-0 self-start ${badgeCls}">${this.escapeHtml(lbl)}</span>
+            <span class="px-2 py-0.5 rounded-md border text-xs font-extrabold uppercase tracking-wider shrink-0 self-start ${badgeCls}">${this.escapeHtml(lbl)}</span>
             <div class="text-xs sm:text-sm text-slate-100 leading-relaxed flex-1 overflow-x-auto">${bodyHtml}</div>
           </div>
         `;

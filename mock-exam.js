@@ -215,13 +215,13 @@
       const badge = document.getElementById('mock-access-badge');
       if (badge) {
         if (window.app?.user?.isOwner) {
-          badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-[11px] font-black text-amber-300';
+          badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-xs font-black text-amber-300';
           badge.textContent = '👑 OWNER — Full 100-Item PRC Board Exam Unlocked';
         } else if (unlocked) {
-          badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[11px] font-black text-emerald-300';
+          badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-black text-emerald-300';
           badge.textContent = '✅ FULL BOARD MOCK UNLOCKED (Owner Granted)';
         } else {
-          badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/45 text-[11px] font-extrabold text-sky-200';
+          badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/45 text-xs font-extrabold text-sky-200';
           badge.textContent = '⚡ 50-Item Quick Mocks FREE • Full 100-Item Board Mock is Owner-Granted';
         }
       }
@@ -249,7 +249,7 @@
           resumeBox.innerHTML = `
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div class="text-xs font-extrabold text-amber-300">⏸️ Unfinished Exam Auto-Saved!</div>
+                <div class="text-xs font-extrabold text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> Unfinished Exam Auto-Saved!</div>
                 <div class="text-xs text-slate-200 mt-0.5">
                   <strong>${a.short} (${s.tier === 'full' ? '100-Item Full' : '50-Item Quick'})</strong> • Answered ${answered}/${s.items.length} • Time Left: <span class="font-mono text-amber-300">${formatHMS(s.remainingSec)}</span>
                 </div>
@@ -274,14 +274,14 @@
             <div class="panel p-4 border border-${a.color}-500/35 flex flex-col justify-between gap-3">
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="px-2 py-0.5 rounded bg-${a.color}-500/20 text-${a.color}-300 text-[10px] font-black uppercase">${a.short} • ${a.weightPct}% Weight</span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-black">FREE</span>
+                  <span class="px-2 py-0.5 rounded bg-${a.color}-500/20 text-${a.color}-300 text-xs font-black uppercase">${a.short} • ${a.weightPct}% Weight</span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-black">FREE</span>
                 </div>
                 <div class="text-sm font-extrabold text-white leading-snug">${a.title}</div>
-                <div class="text-[11px] text-slate-400 font-mono">50 PRC TOS-Weighted Items • ${a.quickHours} hrs</div>
+                <div class="text-xs text-slate-400 font-mono">50 PRC TOS-Weighted Items • ${a.quickHours} hrs</div>
               </div>
               <button onclick="bayawMock.startExam(${id}, 'quick', false)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-${a.color}-600 to-blue-600 hover:brightness-110 text-white text-xs font-extrabold shadow">
-                ⚡ Start 50-Item ${a.short} Mock
+                <svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg> Start 50-Item ${a.short} Mock
               </button>
             </div>
           `;
@@ -294,13 +294,13 @@
         if (!unlocked) {
           fullPanel.innerHTML = `
             <div class="rounded-2xl bg-navy-950/90 border border-amber-500/40 p-6 text-center space-y-3">
-              <div class="text-3xl">🔒</div>
+              <div class="text-3xl"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></div>
               <h3 class="text-base font-extrabold text-amber-300">Full 100-Item PRC Board Exam & Official 3-Area GWA Run</h3>
               <p class="text-xs text-slate-300 max-w-xl mx-auto leading-relaxed">
                 Includes full <strong>100-item PRC TOS-weighted Area 1 (4h), Area 2 (5h), and Area 3 (6h)</strong> exams, multi-session <strong>3-Area Official Board Run</strong>, automated <strong>PRC GWA Grading (32% / 32% / 36% • ≥70% Passing & ≥50% Floor)</strong>, and your <strong>Shareable PRC Report of Rating Card</strong>.
               </p>
               <div class="inline-block px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-400/40 text-xs font-bold text-amber-200">
-                👑 Ask the Owner (Bryan) to grant you Full Mock Exam access from the Owner Panel!
+                <svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> Ask the Owner (Bryan) to grant you Full Mock Exam access from the Owner Panel!
               </div>
             </div>
           `;
@@ -318,14 +318,14 @@
             gwaHtml = `
               <div class="rounded-xl p-4 border ${passed ? 'bg-emerald-950/50 border-emerald-400/50' : 'bg-rose-950/45 border-rose-400/50'} flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div class="text-[11px] font-black uppercase tracking-wider ${passed ? 'text-emerald-300' : 'text-rose-300'}">
-                    ${passed ? '🎉 OFFICIAL PRC BOARD RUN: PASSED!' : (floorFail && gwa >= 70 ? '⚠️ FAILED — SUBJECT BELOW 50% FLOOR' : '❌ OFFICIAL PRC BOARD RUN: FAILED')}
+                  <div class="text-xs font-black uppercase tracking-wider ${passed ? 'text-emerald-300' : 'text-rose-300'}">
+                    ${passed ? '<svg class="ic" aria-hidden="true"><use href="#i-party-popper"/></svg> OFFICIAL PRC BOARD RUN: PASSED!' : (floorFail && gwa >= 70 ? '<svg class="ic" aria-hidden="true"><use href="#i-triangle-alert"/></svg> FAILED — SUBJECT BELOW 50% FLOOR' : '<svg class="ic" aria-hidden="true"><use href="#i-circle-x"/></svg> OFFICIAL PRC BOARD RUN: FAILED')}
                   </div>
                   <div class="text-2xl font-black font-mono text-white mt-0.5">GWA: ${gwa.toFixed(2)}%</div>
-                  <div class="text-[11px] text-slate-300">Area 1: ${r1.pct.toFixed(1)}% (×0.32) • Area 2: ${r2.pct.toFixed(1)}% (×0.32) • Area 3: ${r3.pct.toFixed(1)}% (×0.36)</div>
+                  <div class="text-xs text-slate-300">Area 1: ${r1.pct.toFixed(1)}% (×0.32) • Area 2: ${r2.pct.toFixed(1)}% (×0.32) • Area 3: ${r3.pct.toFixed(1)}% (×0.36)</div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button onclick="bayawMock.openBoardRunReport()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-navy-950 text-xs font-black shadow">📜 View PRC Rating Card</button>
+                  <button onclick="bayawMock.openBoardRunReport()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-navy-950 text-xs font-black shadow"><svg class="ic" aria-hidden="true"><use href="#i-scroll-text"/></svg> View PRC Rating Card</button>
                   <button onclick="bayawMock.resetBoardRun()" class="px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-slate-200 text-xs font-bold">New Board Run</button>
                 </div>
               </div>
@@ -345,22 +345,22 @@
                         <div class="flex items-center justify-between">
                           <span class="text-xs font-black text-amber-300">${a.short} (${a.weightPct}%)</span>
                           ${done
-                            ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-black">✅ ${done.pct.toFixed(1)}%</span>`
-                            : `<span class="text-[10px] font-mono text-slate-400">100 items • ${a.fullHours}h</span>`}
+                            ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-black"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> ${done.pct.toFixed(1)}%</span>`
+                            : `<span class="text-xs font-mono text-slate-400">100 items • ${a.fullHours}h</span>`}
                         </div>
                         <div class="text-xs font-bold text-white leading-snug">${a.title}</div>
-                        <div class="text-[10px] text-slate-400">
+                        <div class="text-xs text-slate-400">
                           ${a.tos.map(t => `${t.code} (${t.fullQuota})`).join(' • ')}
                         </div>
                       </div>
                       <button onclick="bayawMock.startExam(${id}, 'full', true)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-navy-950 text-xs font-black shadow">
-                        ${done ? `↻ Retake 100-Item ${a.short}` : `🏆 Start 100-Item ${a.short}`}
+                        ${done ? `<svg class="ic" aria-hidden="true"><use href="#i-refresh-cw"/></svg> Retake 100-Item ${a.short}` : `<svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Start 100-Item ${a.short}`}
                       </button>
                     </div>
                   `;
                 }).join('')}
               </div>
-              <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <div class="flex items-center justify-between text-xs text-slate-400">
                 <span>Board Run Progress: <strong class="text-white">${doneCnt} / 3 Areas Completed</strong> (take each Area on your own schedule — auto-saved!)</span>
                 ${doneCnt > 0 ? `<button onclick="bayawMock.resetBoardRun()" class="text-rose-300 hover:text-rose-200 font-bold">Reset 3-Area Run</button>` : ''}
               </div>
@@ -382,13 +382,13 @@
             return `
               <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-navy-950/80 border border-blue-900/40 px-3.5 py-2.5 text-xs">
                 <div class="flex items-center gap-2">
-                  <span class="px-2 py-0.5 rounded font-black text-[10px] ${passed ? 'bg-emerald-500/20 text-emerald-300' : (floor ? 'bg-rose-600/30 text-rose-200' : 'bg-amber-500/20 text-amber-300')}">
+                  <span class="px-2 py-0.5 rounded font-black text-xs ${passed ? 'bg-emerald-500/20 text-emerald-300' : (floor ? 'bg-rose-600/30 text-rose-200' : 'bg-amber-500/20 text-amber-300')}">
                     ${h.pct.toFixed(1)}%
                   </span>
                   <span class="font-bold text-white">${esc(h.label)}</span>
-                  <span class="text-[11px] text-slate-400 font-mono">(${h.correct}/${h.total})</span>
+                  <span class="text-xs text-slate-400 font-mono">(${h.correct}/${h.total})</span>
                 </div>
-                <span class="text-[10px] text-slate-400 font-mono">${dt}</span>
+                <span class="text-xs text-slate-400 font-mono">${dt}</span>
               </div>
             `;
           }).join('');
@@ -646,7 +646,7 @@
 
       const metaEl = document.getElementById('mock-q-meta');
       if (metaEl) {
-        metaEl.innerHTML = `Question <span class="text-white">${s.idx + 1}</span> / ${s.items.length} • <span class="text-sky-300">TOS ${esc(qObj.tosCode)}</span>${qObj.isPs ? ' • <span class="text-amber-300">🧮 Problem Solving</span>' : ''}`;
+        metaEl.innerHTML = `Question <span class="text-white">${s.idx + 1}</span> / ${s.items.length} • <span class="text-sky-300">TOS ${esc(qObj.tosCode)}</span>${qObj.isPs ? ' • <span class="text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Problem Solving</span>' : ''}`;
       }
 
       const flagBtn = document.getElementById('mock-flag-btn');
@@ -654,8 +654,8 @@
         const flagged = !!s.flags[s.idx];
         flagBtn.textContent = flagged ? '🚩 Flagged' : '🏳️ Flag for Review';
         flagBtn.className = flagged
-          ? 'px-3 py-1 rounded-lg bg-amber-500/25 border border-amber-400 text-[11px] font-extrabold text-amber-200'
-          : 'px-3 py-1 rounded-lg bg-navy-900 border border-blue-900/60 text-[11px] font-bold text-slate-300 hover:text-amber-200';
+          ? 'px-3 py-1 rounded-lg bg-amber-500/25 border border-amber-400 text-xs font-extrabold text-amber-200'
+          : 'px-3 py-1 rounded-lg bg-navy-900 border border-blue-900/60 text-xs font-bold text-slate-300 hover:text-amber-200';
       }
 
       const qTextEl = document.getElementById('mock-q-text');
@@ -694,7 +694,7 @@
           if (isFlg) cls = 'bg-amber-500/25 border-amber-400 text-amber-200';
           else if (isAns) cls = 'bg-emerald-600/30 border-emerald-400/70 text-emerald-200';
           if (isCur) cls += ' ring-2 ring-sky-400 text-white font-black';
-          return `<button onclick="bayawMock.jumpTo(${i})" class="h-8 rounded-lg border text-[11px] font-mono font-bold transition-all ${cls}">${i + 1}</button>`;
+          return `<button onclick="bayawMock.jumpTo(${i})" class="h-8 rounded-lg border text-xs font-mono font-bold transition-all ${cls}">${i + 1}</button>`;
         }).join('');
       }
     },
@@ -875,10 +875,10 @@
           : (res.floorFail && res.gwa >= 70 ? 'FAILED — SUBJECT BELOW 50% FLOOR' : 'FAILED — BELOW 70% GWA');
         cardEl.innerHTML = `
           <div class="space-y-4">
-            <div class="text-[11px] font-black uppercase tracking-widest text-amber-300">Official PRC-Style Mock Report of Rating • RA 10915</div>
+            <div class="text-xs font-black uppercase tracking-widest text-amber-300">Official PRC-Style Mock Report of Rating • RA 10915</div>
             <div class="text-sm font-bold text-slate-300">Examinee: <span class="text-white">${userName}</span></div>
             <div class="inline-block px-4 py-1.5 rounded-full text-xs font-black ${res.passed ? 'bg-emerald-500/25 border border-emerald-400 text-emerald-200' : 'bg-rose-500/25 border border-rose-400 text-rose-200'}">
-              ${res.passed ? '✅' : '❌'} ${verdictText}
+              ${res.passed ? '<svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg>' : '<svg class="ic" aria-hidden="true"><use href="#i-circle-x"/></svg>'} ${verdictText}
             </div>
             <div class="text-4xl sm:text-5xl font-black font-mono text-white">${res.gwa.toFixed(2)}%</div>
             <div class="text-xs text-slate-400">General Weighted Average (Passing: ≥ 70.00% • Subject Floor: ≥ 50.00%)</div>
@@ -889,13 +889,13 @@
                 { n: 'Area 3 (36%)', r: res.r3 }
               ].map(x => `
                 <div class="rounded-xl bg-navy-950/90 border ${x.r.pct < 50 ? 'border-rose-500/60' : (x.r.pct >= 70 ? 'border-emerald-500/50' : 'border-amber-500/40')} p-3">
-                  <div class="text-[11px] font-bold text-slate-400">${x.n}</div>
+                  <div class="text-xs font-bold text-slate-400">${x.n}</div>
                   <div class="text-xl font-black font-mono ${x.r.pct < 50 ? 'text-rose-400' : (x.r.pct >= 70 ? 'text-emerald-300' : 'text-amber-300')}">${x.r.pct.toFixed(2)}%</div>
-                  <div class="text-[10px] text-slate-400 font-mono">${x.r.correct}/${x.r.total} correct</div>
+                  <div class="text-xs text-slate-400 font-mono">${x.r.correct}/${x.r.total} correct</div>
                 </div>
               `).join('')}
             </div>
-            <div class="text-[10px] font-mono text-slate-500 pt-2">Verified on project-bayaw-app.site • Screenshot & share your board readiness!</div>
+            <div class="text-xs font-mono text-slate-500 pt-2">Verified on project-bayaw-app.site • Screenshot & share your board readiness!</div>
           </div>
         `;
         if (tosEl) tosEl.innerHTML = '';
@@ -909,18 +909,18 @@
         ? 'bg-emerald-500/25 border border-emerald-400 text-emerald-200'
         : (belowFloor ? 'bg-rose-600/30 border border-rose-400 text-rose-200' : 'bg-amber-500/20 border border-amber-400 text-amber-200');
       const verdictTxt = passed
-        ? '✅ PASSED AREA (≥ 70% PRC Target)'
-        : (belowFloor ? '⚠️ BELOW 50% PRC FLOOR (DISQUALIFYING IN REAL BOARD)' : '🟡 ABOVE 50% FLOOR — PUSH TO 70%!');
+        ? '<svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> PASSED AREA (≥ 70% PRC Target)'
+        : (belowFloor ? '<svg class="ic" aria-hidden="true"><use href="#i-triangle-alert"/></svg> BELOW 50% PRC FLOOR (DISQUALIFYING IN REAL BOARD)' : '<span class="inline-block w-2 h-2 rounded-full bg-amber-400 align-middle"></span> ABOVE 50% FLOOR — PUSH TO 70%!');
 
       cardEl.innerHTML = `
         <div class="space-y-3">
-          <div class="text-[11px] font-black uppercase tracking-widest text-sky-300">${esc(res.label)} • ${userName}</div>
+          <div class="text-xs font-black uppercase tracking-widest text-sky-300">${esc(res.label)} • ${userName}</div>
           <div class="inline-block px-4 py-1.5 rounded-full text-xs font-black ${badgeCls}">${verdictTxt}</div>
           <div class="text-4xl sm:text-5xl font-black font-mono text-white">${res.pct.toFixed(2)}%</div>
           <div class="text-xs text-slate-300 font-mono">
             Score: <strong>${res.correct} / ${res.total}</strong> • Time Used: <strong>${formatHMS(res.elapsedSec)}</strong>
           </div>
-          <div class="text-[10px] font-mono text-slate-500 pt-1">project-bayaw-app.site • PRC ABELE TOS Mock Simulator</div>
+          <div class="text-xs font-mono text-slate-500 pt-1">project-bayaw-app.site • PRC ABELE TOS Mock Simulator</div>
         </div>
       `;
 
@@ -929,7 +929,7 @@
         const rows = Object.values(res.tosStats).filter(x => x.total > 0);
         tosEl.innerHTML = `
           <div class="panel p-5 space-y-3 border border-sky-500/30">
-            <h3 class="text-sm font-extrabold text-white">📊 PRC TOS Sub-Subject Diagnostic Breakdown</h3>
+            <h3 class="text-sm font-extrabold text-white"><svg class="ic" aria-hidden="true"><use href="#i-chart-column"/></svg> PRC TOS Sub-Subject Diagnostic Breakdown</h3>
             <div class="space-y-2.5">
               ${rows.map(r => {
                 const p = Math.round((r.correct / r.total) * 100);
@@ -978,7 +978,7 @@
       });
 
       if (!items.length) {
-        listEl.innerHTML = `<div class="text-xs text-emerald-300 font-bold py-4 text-center">🎉 No items in this filter!</div>`;
+        listEl.innerHTML = `<div class="text-xs text-emerald-300 font-bold py-4 text-center"><svg class="ic" aria-hidden="true"><use href="#i-party-popper"/></svg> No items in this filter!</div>`;
         return;
       }
 
@@ -995,9 +995,9 @@
           : '';
         return `
           <div class="rounded-2xl bg-navy-950/90 border ${d.isCorrect ? 'border-emerald-500/35' : 'border-rose-500/40'} p-4 space-y-2.5">
-            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span class="font-mono font-bold text-sky-300">Item #${d.idx + 1} • TOS ${esc(d.tosCode)} • ${esc(d.id)}</span>
-              <span class="font-extrabold ${d.isCorrect ? 'text-emerald-400' : 'text-rose-400'}">${d.isCorrect ? '✅ Correct' : '❌ Missed'}</span>
+              <span class="font-extrabold ${d.isCorrect ? 'text-emerald-400' : 'text-rose-400'}">${d.isCorrect ? '<svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> Correct' : '<svg class="ic" aria-hidden="true"><use href="#i-circle-x"/></svg> Missed'}</span>
             </div>
             <div class="text-xs sm:text-sm font-bold text-white leading-relaxed">${esc(dbItem.question)}</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -1010,7 +1010,7 @@
             </div>
             ${(ceHtml || ratHtml || imgsHtml) ? `
               <div class="rounded-xl bg-navy-900/90 border border-emerald-500/25 p-3 space-y-1.5">
-                <div class="text-[10px] font-black uppercase tracking-wider text-emerald-400">VERIFIED ANSWER & RATIONALE</div>
+                <div class="text-xs font-black uppercase tracking-wider text-emerald-400">VERIFIED ANSWER & RATIONALE</div>
                 ${ceHtml}
                 ${ratHtml}
                 ${imgsHtml}
