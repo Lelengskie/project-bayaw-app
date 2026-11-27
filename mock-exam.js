@@ -231,10 +231,10 @@
       const bPrac = document.getElementById('mock-mode-practice');
       if (bStrict && bPrac) {
         bStrict.className = this.strictMode
-          ? 'px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-extrabold shadow'
+          ? 'px-3 py-1.5 rounded-lg bg-rose-600 text-on-accent text-xs font-extrabold shadow'
           : 'px-3 py-1.5 rounded-lg bg-navy-900 border border-blue-900/50 text-slate-300 text-xs font-bold';
         bPrac.className = !this.strictMode
-          ? 'px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-extrabold shadow'
+          ? 'px-3 py-1.5 rounded-lg bg-sky-600 text-on-accent text-xs font-extrabold shadow'
           : 'px-3 py-1.5 rounded-lg bg-navy-900 border border-blue-900/50 text-slate-300 text-xs font-bold';
       }
 
@@ -255,7 +255,7 @@
                 </div>
               </div>
               <div class="flex items-center gap-2">
-                <button onclick="bayawMock.resumeSession()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-navy-950 text-xs font-black shadow"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Resume Exam</button>
+                <button onclick="bayawMock.resumeSession()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-on-accent text-xs font-black shadow"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Resume Exam</button>
                 <button onclick="bayawMock.discardSession()" class="px-3 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-bold">Discard</button>
               </div>
             </div>
@@ -280,7 +280,7 @@
                 <div class="text-sm font-extrabold text-white leading-snug">${a.title}</div>
                 <div class="text-xs text-slate-400 font-mono">50 PRC TOS-Weighted Items • ${a.quickHours} hrs</div>
               </div>
-              <button onclick="bayawMock.startExam(${id}, 'quick', false)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-${a.color}-600 to-blue-600 hover:brightness-110 text-white text-xs font-extrabold shadow">
+              <button onclick="bayawMock.startExam(${id}, 'quick', false)" class="w-full py-2.5 rounded-xl bg-${a.color}-600 hover:brightness-110 text-on-accent text-xs font-extrabold shadow">
                 <svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg> Start 50-Item ${a.short} Mock
               </button>
             </div>
@@ -325,7 +325,7 @@
                   <div class="text-xs text-slate-300">Area 1: ${r1.pct.toFixed(1)}% (×0.32) • Area 2: ${r2.pct.toFixed(1)}% (×0.32) • Area 3: ${r3.pct.toFixed(1)}% (×0.36)</div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button onclick="bayawMock.openBoardRunReport()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-navy-950 text-xs font-black shadow"><svg class="ic" aria-hidden="true"><use href="#i-scroll-text"/></svg> View PRC Rating Card</button>
+                  <button onclick="bayawMock.openBoardRunReport()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-on-accent text-xs font-black shadow"><svg class="ic" aria-hidden="true"><use href="#i-scroll-text"/></svg> View PRC Rating Card</button>
                   <button onclick="bayawMock.resetBoardRun()" class="px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-slate-200 text-xs font-bold">New Board Run</button>
                 </div>
               </div>
@@ -353,7 +353,7 @@
                           ${a.tos.map(t => `${t.code} (${t.fullQuota})`).join(' • ')}
                         </div>
                       </div>
-                      <button onclick="bayawMock.startExam(${id}, 'full', true)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-navy-950 text-xs font-black shadow">
+                      <button onclick="bayawMock.startExam(${id}, 'full', true)" class="w-full py-2.5 rounded-xl bg-amber-500 hover:brightness-110 text-on-accent text-xs font-black shadow">
                         ${done ? `<svg class="ic" aria-hidden="true"><use href="#i-refresh-cw"/></svg> Retake 100-Item ${a.short}` : `<svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Start 100-Item ${a.short}`}
                       </button>
                     </div>
@@ -624,8 +624,8 @@
       const sec = this.activeSession.remainingSec;
       el.textContent = formatHMS(sec);
       el.className = sec <= 300
-        ? 'font-mono text-sm font-black text-rose-400 animate-pulse'
-        : (sec <= 900 ? 'font-mono text-sm font-black text-amber-300' : 'font-mono text-sm font-black text-emerald-300');
+        ? 'font-mono text-lg font-medium text-rose-400'
+        : (sec <= 900 ? 'font-mono text-lg font-medium text-amber-300' : 'font-mono text-lg font-medium text-white');
     },
 
     getDbItemById(id) {
@@ -654,8 +654,8 @@
         const flagged = !!s.flags[s.idx];
         flagBtn.innerHTML = flagged ? '<svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Flagged' : '<svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Flag for Review';
         flagBtn.className = flagged
-          ? 'px-3 py-1 rounded-lg bg-amber-500/25 border border-amber-400 text-xs font-extrabold text-amber-200'
-          : 'px-3 py-1 rounded-lg bg-navy-900 border border-blue-900/60 text-xs font-bold text-slate-300 hover:text-amber-200';
+          ? 'min-h-[40px] px-3 rounded-lg bg-amber-950 border border-amber-800 text-[13px] font-semibold text-amber-300'
+          : 'min-h-[40px] px-3 rounded-lg bg-surface border border-rule text-[13px] font-medium text-slate-300 hover:text-amber-300';
       }
 
       const qTextEl = document.getElementById('mock-q-text');
@@ -675,9 +675,9 @@
         chWrap.innerHTML = qObj.choices.map((ch, i) => {
           const active = picked === i;
           return `
-            <button onclick="bayawMock.pickChoice(${i})" class="w-full text-left px-4 py-3 rounded-xl border transition-all flex items-start gap-3 ${active ? 'bg-sky-600/30 border-sky-400 text-white shadow-md' : 'bg-navy-950/85 hover:bg-navy-900 border-blue-900/50 text-slate-200'}">
-              <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${active ? 'bg-sky-400 text-navy-950' : 'bg-navy-800 text-sky-300'}">${letters[i] || i + 1}</span>
-              <span class="text-xs sm:text-sm leading-relaxed">${esc(ch)}</span>
+            <button onclick="bayawMock.pickChoice(${i})" role="radio" aria-checked="${active}" class="choice rounded-[10px] !border !border-rule mb-2${active ? ' is-picked' : ''}">
+              <span class="choice-badge">${letters[i] || i + 1}</span>
+              <span class="text-[15px] leading-snug flex-1">${esc(ch)}</span>
             </button>
           `;
         }).join('');
@@ -690,11 +690,11 @@
           const isCur = i === s.idx;
           const isAns = s.answers[i] !== undefined;
           const isFlg = !!s.flags[i];
-          let cls = 'bg-navy-950 border-blue-900/50 text-slate-400 hover:text-white';
-          if (isFlg) cls = 'bg-amber-500/25 border-amber-400 text-amber-200';
-          else if (isAns) cls = 'bg-emerald-600/30 border-emerald-400/70 text-emerald-200';
-          if (isCur) cls += ' ring-2 ring-sky-400 text-white font-black';
-          return `<button onclick="bayawMock.jumpTo(${i})" class="h-8 rounded-lg border text-xs font-mono font-bold transition-all ${cls}">${i + 1}</button>`;
+          // answer-sheet bubbles: filled = answered, green ring = current, gold halo = flagged
+          let cls = isAns ? 'bubble-filled' : '';
+          if (isCur) cls += ' bubble-current';
+          if (isFlg) cls += ' bubble-flagged';
+          return `<button onclick="bayawMock.jumpTo(${i})" aria-label="Item ${i + 1}${isAns ? ', answered' : ''}${isFlg ? ', flagged' : ''}" class="bubble ${cls}">${i + 1}</button>`;
         }).join('');
       }
     },
@@ -972,7 +972,7 @@
         const b = document.getElementById(`mock-rev-tab-${f}`);
         if (b) {
           b.className = this.reviewFilter === f
-            ? 'px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-extrabold'
+            ? 'px-3 py-1.5 rounded-lg bg-sky-600 text-on-accent text-xs font-extrabold'
             : 'px-3 py-1.5 rounded-lg bg-navy-900 border border-blue-900/50 text-slate-300 text-xs font-bold';
         }
       });
@@ -1009,8 +1009,8 @@
               </div>
             </div>
             ${(ceHtml || ratHtml || imgsHtml) ? `
-              <div class="rounded-xl bg-navy-900/90 border border-emerald-500/25 p-3 space-y-1.5">
-                <div class="text-xs font-black uppercase tracking-wider text-emerald-400">VERIFIED ANSWER & RATIONALE</div>
+              <div class="graph-paper rounded-xl border border-rule p-3.5 space-y-2">
+                <div class="label-mono !text-emerald-300">${dbItem.category === 'problem_solving' ? 'Worked solution' : 'Verified answer &amp; rationale'}</div>
                 ${ceHtml}
                 ${ratHtml}
                 ${imgsHtml}

@@ -320,7 +320,7 @@ class AgriBoardApp {
         }
 
         const revokedTag = acc.revoked
-          ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-xs uppercase">REVOKED</span>`
+          ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-rose-600 text-on-accent font-black text-xs uppercase">REVOKED</span>`
           : '';
         const revSentBadge = (acc.reviewersSent || 0) > 0
           ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/25 border border-indigo-400/50 text-indigo-200 font-bold text-xs" title="Reviewers contributed"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg> ${acc.reviewersSent} sent</span>`
@@ -387,20 +387,20 @@ class AgriBoardApp {
     if (banner) {
       if (isActive && this.authMode === 'register') {
         banner.classList.remove('hidden');
-        if (countdown) countdown.textContent = `Sign up in the next ${hrsLeft}h to get ${p.trialDays || 5} Days FREE — No Access Code Needed!`;
+        if (countdown) countdown.textContent = `Sign up in the next ${hrsLeft}h to get ${p.trialDays || 5} days free. No access code needed.`;
       } else {
         banner.classList.add('hidden');
       }
     }
     if (codeLabel) {
       codeLabel.textContent = isActive
-        ? 'Owner Access Code (Optional during 2-Day Free Launch Promo)'
-        : 'Owner Access Code (Required for Registration)';
+        ? 'Access code (optional)'
+        : 'Access code';
     }
     if (codeHint) {
       codeHint.innerHTML = isActive
-        ? 'Leave blank to claim 5 Days FREE, or enter an Owner Access Code / Master Passcode.'
-        : 'Ask the <svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> Owner for an invite code (Owner can enter master passcode here).';
+        ? `Leave blank to get ${p.trialDays || 5} days free, or enter an invite code.`
+        : 'Ask the owner for an invite code.';
     }
 
     // Update Admin Promo Pill
@@ -499,7 +499,7 @@ class AgriBoardApp {
     }
     tbody.innerHTML = users.map(u => {
       const badgeHtml = u.isOwner
-        ? `<span class="px-2 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 font-black text-xs"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`
+        ? `<span class="px-2 py-0.5 rounded bg-amber-400 text-on-accent font-black text-xs"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`
         : (u.title
             ? `<span class="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${this.escapeHtml(u.title)}</span>`
             : `<span class="text-slate-500 text-xs">No custom title</span>`);
@@ -658,10 +658,12 @@ class AgriBoardApp {
     if (!inp || !btn) return;
     if (inp.type === 'password') {
       inp.type = 'text';
-      btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye-off"/></svg> Hide';
+      btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye-off"/></svg>';
+      btn.setAttribute('aria-label', 'Hide password');
     } else {
       inp.type = 'password';
-      btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Show';
+      btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg>';
+      btn.setAttribute('aria-label', 'Show password');
     }
   }
 
@@ -674,19 +676,16 @@ class AgriBoardApp {
     const err = document.getElementById('auth-error-msg');
     if (err) err.classList.add('hidden');
 
-    if (mode === 'register') {
-      regTab.className = 'py-2 rounded-lg text-xs font-extrabold bg-emerald-600 text-white transition-all';
-      loginTab.className = 'py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
-      codeWrap.classList.remove('hidden');
-      submitBtn.textContent = 'Create Account & Unlock App';
-      submitBtn.className = 'w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 transition-all';
-    } else {
-      loginTab.className = 'py-2 rounded-lg text-xs font-extrabold bg-blue-600 text-white transition-all';
-      regTab.className = 'py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
-      codeWrap.classList.add('hidden');
-      submitBtn.textContent = 'Sign In & Sync Progress';
-      submitBtn.className = 'w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:brightness-110 text-white font-extrabold text-sm shadow-lg shadow-blue-600/30 transition-all';
-    }
+    const isReg = mode === 'register';
+    loginTab.setAttribute('aria-selected', String(!isReg));
+    regTab.setAttribute('aria-selected', String(isReg));
+    codeWrap.classList.toggle('hidden', !isReg);
+    submitBtn.textContent = isReg ? 'Create account' : 'Sign in';
+    document.getElementById('auth-modal-title').textContent = isReg ? 'Create your account' : 'Welcome back';
+    document.getElementById('auth-modal-sub').textContent = isReg
+      ? 'Pick a username and password. Your progress saves to the cloud.'
+      : 'Sign in to continue your review. Your progress syncs across phone and PC.';
+    document.getElementById('auth-password-input').autocomplete = isReg ? 'new-password' : 'current-password';
     this.updatePromoUI();
   }
 
@@ -711,7 +710,7 @@ class AgriBoardApp {
 
     const prevText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = this.authMode === 'register' ? 'Creating Cloud Account...' : 'Signing In & Loading Progress...';
+    btn.textContent = this.authMode === 'register' ? 'Creating account…' : 'Signing in…';
 
     try {
       const action = this.authMode === 'register' ? 'auth_register' : 'auth_login';
@@ -1030,15 +1029,14 @@ class AgriBoardApp {
     // My Progress Panel
     document.getElementById('prog-a1-lvl').textContent = `Lv ${s1.completedLevels} / ${s1.totalLevels}`;
     document.getElementById('prog-a1-txt').textContent = `${s1.mastered.toLocaleString()} / ${s1.total.toLocaleString()} (${s1.pct.toFixed(0)}%)`;
-    document.getElementById('prog-a1-bar').style.width = `${s1.pct}%`;
 
     document.getElementById('prog-a2-lvl').textContent = `Lv ${s2.completedLevels} / ${s2.totalLevels}`;
     document.getElementById('prog-a2-txt').textContent = `${s2.mastered.toLocaleString()} / ${s2.total.toLocaleString()} (${s2.pct.toFixed(0)}%)`;
-    document.getElementById('prog-a2-bar').style.width = `${s2.pct}%`;
 
     document.getElementById('prog-a3-lvl').textContent = `Lv ${s3.completedLevels} / ${s3.totalLevels}`;
     document.getElementById('prog-a3-txt').textContent = `${s3.mastered.toLocaleString()} / ${s3.total.toLocaleString()} (${s3.pct.toFixed(0)}%)`;
-    document.getElementById('prog-a3-bar').style.width = `${s3.pct}%`;
+
+    this.renderFieldPlots();
 
     document.getElementById('prog-overall-txt').textContent = `${totalMastered.toLocaleString()} / ${totalItems.toLocaleString()} (${overallPct.toFixed(1)}%)`;
     document.getElementById('prog-overall-bar').style.width = `${overallPct}%`;
@@ -1051,6 +1049,21 @@ class AgriBoardApp {
     this.renderLeaderboards();
   }
 
+  // "Your field": one plot per level (plus the Problem Solving set), coloured by mastery
+  renderFieldPlots() {
+    const plot = (st) => `<span class="plot${st.total && st.mastered === st.total ? ' plot-done' : (st.mastered + st.learning > 0 ? ' plot-active' : '')}"></span>`;
+    for (const area of this.db.areas) {
+      const el = document.getElementById(`prog-a${area.id}-field`);
+      if (!el) continue;
+      const levels = this.getRegularTotalLevels(area.id);
+      let html = '';
+      for (let lvl = 1; lvl <= levels; lvl++) html += plot(this.getLevelStats(area.id, lvl));
+      const ps = this.getPsStats(area.id);
+      if (ps.total) html += plot(ps);
+      el.innerHTML = html;
+    }
+  }
+
   // ==================== 100-ITEM LEVEL TILES ====================
   filterLevelsByArea(areaId) {
     this.levelFilterArea = areaId;
@@ -1058,7 +1071,7 @@ class AgriBoardApp {
       const btn = document.getElementById(id === 0 ? 'lvl-filter-all' : `lvl-filter-${id}`);
       if (!btn) return;
       if (id === areaId) {
-        btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-bold bg-emerald-600 text-white';
+        btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-bold bg-emerald-600 text-on-accent';
       } else {
         btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-semibold bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]';
       }
@@ -1103,7 +1116,7 @@ class AgriBoardApp {
       if (ps.total > 0) {
         const isPsActive = (this.problemSolvingOnly && this.activeStudyArea === area.id);
         html += `
-          <button onclick="app.openProblemSolvingMode(${area.id})" class="shrink-0 w-36 text-left rounded-lg px-2.5 py-1.5 transition-all ${isPsActive ? 'bg-gradient-to-b from-amber-500/30 to-orange-900/50 border-2 border-amber-400 shadow-lg shadow-amber-500/25' : 'bg-amber-950/35 border border-amber-500/40 hover:border-amber-400'}">
+          <button onclick="app.openProblemSolvingMode(${area.id})" class="shrink-0 w-36 text-left rounded-lg px-2.5 py-1.5 transition-all ${isPsActive ? ' bg-amber-500/30 border-2 border-amber-400 shadow-lg' : 'bg-amber-950/35 border border-amber-500/40 hover:border-amber-400'}">
             <div class="flex items-center justify-between gap-1">
               <span class="text-xs font-extrabold text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> A${area.id} (PS)</span>
               <span class="text-xs font-mono font-bold ${ps.pct === 100 ? 'text-emerald-400' : 'text-amber-300'}">${ps.pct.toFixed(0)}%</span>
@@ -1155,14 +1168,14 @@ class AgriBoardApp {
 
     const toggleBtn = document.getElementById('btn-toggle-prob-only');
     if (toggleBtn) {
-      toggleBtn.className = 'shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-amber-400 text-navy-950 border border-amber-300 text-xs font-bold transition-colors';
+      toggleBtn.className = 'shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-amber-400 text-on-accent border border-amber-300 text-xs font-bold transition-colors';
       toggleBtn.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Problem Solving Active (Area ${areaId})`;
     }
 
     [1, 2, 3].forEach(id => {
       const btn = document.getElementById(`prob-area-btn-${id}`);
       if (!btn) return;
-      const activeColors = { 1: 'bg-sky-600 text-white', 2: 'bg-emerald-600 text-white', 3: 'bg-purple-600 text-white' };
+      const activeColors = { 1: 'bg-sky-600 text-on-accent', 2: 'bg-emerald-600 text-on-accent', 3: 'bg-purple-600 text-on-accent' };
       btn.className = id === areaId
         ? `shrink-0 whitespace-nowrap px-3 min-h-[36px] rounded-lg text-xs font-bold ${activeColors[id]}`
         : 'shrink-0 whitespace-nowrap px-3 min-h-[36px] rounded-lg text-xs font-semibold bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]';
@@ -1294,9 +1307,9 @@ class AgriBoardApp {
         card._shuffled = true;
       }
       choicesBox.innerHTML = card.choices.map((ch, idx) => `
-        <button onclick="app.selectStudyMcqChoice(${idx})" id="study-choice-${idx}" class="w-full min-h-[48px] text-left px-3 sm:px-3.5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-emerald-400/50 transition-colors flex items-center gap-3">
-          <span class="w-6 h-6 rounded-md bg-navy-800 text-sky-300 font-mono text-xs font-extrabold flex items-center justify-center shrink-0">${letters[idx]}</span>
-          <span class="text-sm font-medium text-slate-200 flex-1">${this.escapeHtml(ch)}</span>
+        <button onclick="app.selectStudyMcqChoice(${idx})" id="study-choice-${idx}" class="choice">
+          <span class="choice-badge">${letters[idx]}</span>
+          <span class="text-[15px] leading-snug flex-1">${this.escapeHtml(ch)}</span>
         </button>
       `).join('');
     } else {
@@ -1318,9 +1331,11 @@ class AgriBoardApp {
       const btn = document.getElementById(`study-choice-${idx}`);
       if (!btn) return;
       if (ch === card.answer) {
-        btn.className = 'w-full text-left px-3.5 py-2.5 rounded-xl bg-emerald-600/30 border-2 border-emerald-400 flex items-center gap-3 shadow-lg shadow-emerald-900/30';
+        btn.classList.add('is-right');
+        btn.insertAdjacentHTML('beforeend', '<span class="choice-tag">ANSWER</span>');
       } else if (idx === choiceIdx && !isCorrect) {
-        btn.className = 'w-full text-left px-3.5 py-2.5 rounded-xl bg-rose-600/30 border-2 border-rose-400 flex items-center gap-3';
+        btn.classList.add('is-wrong');
+        btn.insertAdjacentHTML('beforeend', '<span class="choice-tag">YOURS</span>');
       }
     });
 
@@ -1395,6 +1410,10 @@ class AgriBoardApp {
     document.getElementById('study-flip-btn-wrap').classList.add('hidden');
     document.getElementById('study-answer-box').classList.remove('hidden');
     document.getElementById('study-answer-text').textContent = card.answer;
+    // Problem-solving items read like an engineer's worked solution: mono working on graph paper
+    const isPs = card.category === 'problem_solving';
+    document.getElementById('study-answer-label').textContent = isPs ? 'Worked solution' : 'Verified answer & rationale';
+    document.getElementById('study-rationale-text').classList.toggle('worked', isPs);
     const ceHtml = this.buildChoiceExplanationsHtml(card, chosenAnswer);
     const ratHtml = this.formatRationaleHtml(card);
     document.getElementById('study-rationale-text').innerHTML = ceHtml
@@ -1517,16 +1536,16 @@ class AgriBoardApp {
         const r = rec.lastRating || (rec.status === 'mastered' ? 'easy' : 'again');
         if (r === 'again') {
           cAgain++;
-          cls = 'bg-rose-600 text-white font-extrabold';
+          cls = 'bg-rose-600 text-on-accent font-extrabold';
         } else if (r === 'hard') {
           cHard++;
-          cls = 'bg-amber-500 text-navy-950 font-extrabold';
+          cls = 'bg-amber-500 text-on-accent font-extrabold';
         } else if (r === 'good') {
           cGood++;
-          cls = 'bg-blue-600 text-white font-extrabold';
+          cls = 'bg-blue-600 text-on-accent font-extrabold';
         } else {
           cEasy++;
-          cls = 'bg-emerald-500 text-navy-950 font-extrabold';
+          cls = 'bg-emerald-500 text-on-accent font-extrabold';
         }
       } else {
         unseen++;
@@ -1593,7 +1612,7 @@ class AgriBoardApp {
               <div class="text-xs font-bold text-white">${this.escapeHtml(r.p1_name)} <span class="text-xs font-mono text-amber-300">(${r.p1_rp || 1200} RP)</span></div>
               <div class="text-xs text-sky-300">${lvlTxt} • ${r.deck_size} Cards</div>
             </div>
-            <button onclick="app.joinWaitingPvpRoom(${r.area_id}, '${r.level_val}', ${r.deck_size})" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold">
+            <button onclick="app.joinWaitingPvpRoom(${r.area_id}, '${r.level_val}', ${r.deck_size})" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-on-accent text-xs font-extrabold">
               <svg class="ic" aria-hidden="true"><use href="#i-swords"/></svg> Accept Duel
             </button>
           </div>
@@ -1969,10 +1988,10 @@ class AgriBoardApp {
     const pBtn = document.getElementById('side-lb-tab-prog');
     const vBtn = document.getElementById('side-lb-tab-pvp');
     if (tab === 'prog') {
-      pBtn.className = 'py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white';
+      pBtn.className = 'py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-on-accent';
       vBtn.className = 'py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white';
     } else {
-      vBtn.className = 'py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white';
+      vBtn.className = 'py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-on-accent';
       pBtn.className = 'py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white';
     }
   }
@@ -1986,7 +2005,7 @@ class AgriBoardApp {
 
   renderTitleBadge(p) {
     if (p.isOwner) {
-      return `<span class="ml-1 px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-orange-500 text-navy-950 font-black text-xs uppercase"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`;
+      return `<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-400 text-on-accent font-black text-xs uppercase"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`;
     }
     if (p.title) {
       return `<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-xs">${this.escapeHtml(p.title)}</span>`;
@@ -2162,7 +2181,7 @@ class AgriBoardApp {
             </div>
             <div class="text-xs font-mono text-slate-400">Items ${start} – ${end} (${lst.mastered}/${lst.total})</div>
             <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full" style="width: ${lst.pct}%"></div>
+              <div class="h-full bg-sky-500 rounded-full" style="width: ${lst.pct}%"></div>
             </div>
           </div>
         `;
@@ -2177,7 +2196,7 @@ class AgriBoardApp {
             </div>
             <div class="text-xs font-mono text-slate-400">Problem Solving Only (${ps.mastered}/${ps.total})</div>
             <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full" style="width: ${ps.pct}%"></div>
+              <div class="h-full bg-amber-500 rounded-full" style="width: ${ps.pct}%"></div>
             </div>
           </div>
         `;
@@ -2232,7 +2251,7 @@ class AgriBoardApp {
       ? `<div class="text-slate-500 text-xs text-center py-6">No messages yet. Say hi! <svg class="ic" aria-hidden="true"><use href="#i-hand"/></svg></div>`
       : messages.map(m => {
         const badge = m.isOwner
-          ? `<span class="px-1 py-0.2 rounded bg-amber-400 text-navy-950 font-black text-xs">OWNER</span>`
+          ? `<span class="px-1 py-0.2 rounded bg-amber-400 text-on-accent font-black text-xs">OWNER</span>`
           : (m.title ? `<span class="px-1 rounded bg-sky-500/20 text-sky-300 font-bold text-xs">${this.escapeHtml(m.title)}</span>` : '');
         return `
           <div class="bg-navy-950/75 border border-blue-900/35 rounded-lg px-2.5 py-1.5 leading-snug">
@@ -2574,7 +2593,9 @@ class AgriBoardApp {
     // Exponents & superscripts
     wrapParens('^(', '^');
     s = s.replace(/\^(-?[A-Za-z0-9\.]+)/g, '^{$1}');
-    s = s.replace(/²/g, '^{2}').replace(/³/g, '^{3}');
+    // Unicode superscript runs, e.g. 10⁻³ -> 10^{-3}
+    const SUP = { '⁻': '-', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+    s = s.replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, m => `^{${[...m].map(c => SUP[c]).join('')}}`);
     // Subscripts like T_i, S_d, P_w, c_p
     s = s.replace(/\b([A-Za-z])_([A-Za-z0-9]+(?:_[A-Za-z0-9]+)*)\b/g, (m, a, b) => `${a}_{${b.replace(/_/g, ' ')}}`);
     // Symbols
@@ -2648,16 +2669,12 @@ class AgriBoardApp {
         const rest = labelMatch[2].trim();
         const isAns = /^(Answer|Therefore)$/i.test(lbl);
         const isGiven = /^Given$/i.test(lbl);
-        const badgeCls = isAns
-          ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-200'
-          : isGiven
-            ? 'bg-sky-500/20 border-sky-400/40 text-sky-200'
-            : 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200';
         const bodyHtml = this.formatMathLineContent(rest);
+        // Notebook style: small step label above the working, answer line in green
         return `
-          <div class="flex flex-col sm:flex-row sm:items-baseline gap-1.5 py-1">
-            <span class="px-2 py-0.5 rounded-md border text-xs font-extrabold uppercase tracking-wider shrink-0 self-start ${badgeCls}">${this.escapeHtml(lbl)}</span>
-            <div class="text-xs sm:text-sm text-slate-100 leading-relaxed flex-1 overflow-x-auto">${bodyHtml}</div>
+          <div class="py-1">
+            <div class="font-sans text-xs ${isAns ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">${this.escapeHtml(lbl)}</div>
+            <div class="leading-relaxed overflow-x-auto overflow-y-hidden ${isAns ? 'text-emerald-300 font-semibold' : 'text-white'}">${bodyHtml}</div>
           </div>
         `;
       }
@@ -2666,18 +2683,19 @@ class AgriBoardApp {
       const isEqLine = line.startsWith('⇒') || (line.includes('=') && line.length < 130 && !/^[A-Z][a-z]+\s+[a-z]+\s+[a-z]+\s+[a-z]+/.test(line));
       if (isEqLine) {
         const eqText = line.replace(/^⇒\s*/, '');
-        const prefix = line.startsWith('⇒') ? '<span class="text-emerald-400 font-bold mr-1.5">⇒</span>' : '';
+        const prefix = line.startsWith('⇒') ? '<span class="text-emerald-300 mr-1.5">⇒</span>' : '';
         return `
-          <div class="bg-navy-950/85 border border-emerald-500/25 rounded-xl px-3.5 py-2 my-1 overflow-x-auto text-emerald-100 text-sm">
+          <div class="py-1 overflow-x-auto overflow-y-hidden text-white">
             ${prefix}${this.renderKatexSafe(eqText, false)}
           </div>
         `;
       }
 
-      return `<div class="text-xs sm:text-sm text-slate-200 leading-relaxed py-0.5">${this.formatMathLineContent(line)}</div>`;
+      return `<div class="text-sm text-slate-300 leading-relaxed py-0.5">${this.formatMathLineContent(line)}</div>`;
     });
 
-    return `<div class="space-y-1.5 pt-1">${htmlLines.join('')}</div>`;
+    // the rationale box keeps line breaks (pre-line), so drop template whitespace between tags
+    return `<div class="space-y-1.5 pt-1">${htmlLines.join('').replace(/>\s*\n\s*</g, '><').trim()}</div>`;
   }
 
   formatMathLineContent(text) {
@@ -2685,16 +2703,17 @@ class AgriBoardApp {
     // If the whole segment is a clean equation (contains '=' and few prose words), render via KaTeX!
     const words = text.match(/\b[a-z]{4,}\b/g) || [];
     if (text.includes('=') && words.length <= 3 && text.length <= 110) {
-      return `<span class="inline-block bg-navy-950/80 border border-emerald-500/20 rounded-lg px-2.5 py-1 text-emerald-100">${this.renderKatexSafe(text, false)}</span>`;
+      return `<span class="inline-block">${this.renderKatexSafe(text, false)}</span>`;
     }
     // Otherwise render inline equations separated by semicolons/commas or embedded formulas like "A = √3 d²"
     const escaped = this.escapeHtml(text);
     // Highlight inline equation segments like "Q = 5 m³/s", "R = d/2", "b = 2d/√3"
-    return escaped.replace(/([A-Za-zΔηθπ][A-Za-z0-9_]*\s*=\s*[^,.;\n]{1,52})/g, (match) => {
+    // decimals (0.25) and thousands (1,000) stay inside the equation
+    return escaped.replace(/([A-Za-zΔηθπ][A-Za-z0-9_]*\s*=\s*(?:[^,.;\n]|\.(?=\d)|,(?=\d{3}\b)){1,52})/g, (match) => {
       // Unescape basic entities for KaTeX
       const rawEq = match.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
       if (/[0-9√^\/×÷²³]/.test(rawEq)) {
-        return `<span class="inline-block bg-navy-950/75 border border-emerald-500/20 rounded px-1.5 py-0.5 mx-0.5 text-emerald-100 align-middle">${this.renderKatexSafe(rawEq, false)}</span>`;
+        return `<span class="inline-block mx-0.5 align-middle">${this.renderKatexSafe(rawEq, false)}</span>`;
       }
       return match;
     });

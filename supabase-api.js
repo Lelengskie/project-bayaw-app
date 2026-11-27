@@ -1,7 +1,8 @@
 // Project Bayaw App — Direct Supabase Backend Adapter (100% Free Tier, Zero Netlify Credits!)
 const SUPABASE_URL = 'https://iqktfuofdxiuubkycvau.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_9KSkABDrgL41B-KfgEqFIQ_4372HQ1H';
-const OWNER_MASTER_PASSCODE = 'BAYAW-OWNER-2026';
+// Only the SHA-256 hash of the owner passcode is stored, so the code cannot be read from this file.
+const OWNER_PASSCODE_SHA256 = "0e177d08b90792386d55f21a131c8fdc7824c0d1e138ec27103053ab6fa92118";
 
 window.sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -15,8 +16,9 @@ function normKey(name) {
   return String(name || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
 }
 
-function isOwnerPasscode(pass) {
-  return String(pass || '').trim() === OWNER_MASTER_PASSCODE;
+async function isOwnerPasscode(pass) {
+  const p = String(pass || '').trim();
+  return !!p && (await sha256Hex(p)) === OWNER_PASSCODE_SHA256;
 }
 
 // Unified API handler replacing /api/leaderboard so every single feature works seamlessly on Supabase + GitHub Pages
@@ -101,7 +103,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       const text = String(body.text || '').trim().slice(0, 240);
       if (!senderName || !text) return okRes({ ok: false, error: 'Empty message' }, 400);
 
-      let isOwner = isOwnerPasscode(adminPasscode);
+      let isOwner = await isOwnerPasscode(adminPasscode);
       let title = '';
       if (senderId) {
         const { data: u } = await sb.from('accounts').select('is_owner,title').eq('id', senderId).maybeSingle();
@@ -128,7 +130,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_clear_chat') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       await sb.from('global_chat').delete().neq('id', '');
       return okRes({ ok: true });
     }
@@ -287,7 +289,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_list_feedback') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const { data } = await sb.from('feedback_inbox').select('*').order('created_at', { ascending: false }).limit(100);
       const feedback = (data || []).map(f => ({
         id: f.id, name: f.name, category: f.category, message: f.message, createdAt: f.created_at
@@ -296,14 +298,14 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_delete_feedback') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       await sb.from('feedback_inbox').delete().eq('id', body.feedbackId);
       return okRes({ ok: true });
     }
 
     // 2B. SUBMITTED REVIEWERS (.DOCX / .PDF) INBOX
     if (action === 'admin_list_reviewers') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const { data, error } = await sb.from('reviewer_submissions').select('*').order('created_at', { ascending: false }).limit(200);
       if (error) return okRes({ ok: false, error: error.message }, 500);
       const list = (data || []).map(r => ({
@@ -338,7 +340,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_mark_reviewer_added') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const id = String(body.reviewerId || '');
       const { data: rec } = await sb.from('reviewer_submissions').select('file_path').eq('id', id).maybeSingle();
       if (rec?.file_path) {
@@ -349,7 +351,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_delete_reviewer') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const id = String(body.reviewerId || '');
       const { data: rec } = await sb.from('reviewer_submissions').select('file_path').eq('id', id).maybeSingle();
       if (rec?.file_path) {
@@ -380,7 +382,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       let durationDays = null;
       let durationLabel = 'Unlimited';
 
-      if (isOwnerPasscode(accessCodeRaw)) {
+      if (await isOwnerPasscode(accessCodeRaw)) {
         isOwnerMaster = true;
       } else if (!accessCodeRaw && promoActive) {
         usedCodeStr = 'LAUNCH-PROMO-5D';
@@ -509,12 +511,12 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
     // 4. OWNER ADMIN ACTIONS
     if (action === 'admin_verify') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Invalid Admin Passcode' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Invalid Admin Passcode' }, 401);
       return okRes({ ok: true });
     }
 
     if (action === 'admin_set_promo') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const enabled = !!body.enabled;
       const hours = Math.max(1, Math.min(720, Number(body.hours) || 48));
       const trialDays = Math.max(1, Math.min(30, Number(body.trialDays) || 5));
@@ -525,7 +527,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_generate_access_code') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let randPart = '';
       for (let i = 0; i < 6; i++) randPart += chars[Math.floor(Math.random() * chars.length)];
@@ -548,7 +550,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_list_access_codes') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const { data } = await sb.from('access_codes').select('*').order('created_at', { ascending: false });
       const codes = (data || []).map(c => ({
         code: c.code, label: c.label, maxUses: c.max_uses, uses: c.uses,
@@ -558,13 +560,13 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_delete_access_code') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       await sb.from('access_codes').delete().eq('code', String(body.code || '').toUpperCase());
       return okRes({ ok: true });
     }
 
     if (action === 'admin_list_accounts') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const [{ data }, revRes] = await Promise.all([
         sb.from('accounts').select('*'),
         sb.from('reviewer_submissions').select('username_key')
@@ -595,7 +597,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_set_full_mock') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const key = normKey(body.usernameKey);
       const granted = !!body.granted;
       const { error } = await sb.from('accounts').update({ full_mock_access: granted, updated_at: Date.now() }).eq('username_key', key);
@@ -604,14 +606,14 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_revoke_account') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const key = normKey(body.usernameKey);
       await sb.from('accounts').update({ revoked: body.revoke !== false, updated_at: Date.now() }).eq('username_key', key);
       return okRes({ ok: true });
     }
 
     if (action === 'admin_renew_account') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const key = normKey(body.usernameKey);
       const { data: acc } = await sb.from('accounts').select('access_expires_at').eq('username_key', key).maybeSingle();
       if (!acc) return okRes({ ok: false, error: 'Account not found' }, 404);
@@ -638,7 +640,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_set_title') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const updates = { title: String(body.title || '').trim().slice(0, 28), updated_at: Date.now() };
       if (typeof body.isOwner === 'boolean') updates.is_owner = body.isOwner;
       await sb.from('accounts').update(updates).eq('id', body.targetId);
@@ -646,7 +648,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_delete_user') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       if (body.usernameKey) {
         await sb.from('accounts').delete().eq('username_key', normKey(body.usernameKey));
       } else if (body.targetId) {
@@ -656,7 +658,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_reset_password') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const key = normKey(body.usernameKey);
       const newPw = String(body.newPassword || '');
       if (!key || newPw.length < 4) {
@@ -668,7 +670,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_reset_leaderboard') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const scope = body.scope || 'all';
       if (scope === 'pvp') {
         await sb.from('accounts').update({ rp: 1200, pvp_wins: 0, pvp_losses: 0, best_time_sec: null, updated_at: Date.now() }).neq('id', '');
@@ -690,7 +692,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     }
 
     if (action === 'admin_generate_reset_code') {
-      if (!isOwnerPasscode(adminPasscode)) return okRes({ ok: false, error: 'Unauthorized' }, 401);
+      if (!(await isOwnerPasscode(adminPasscode))) return okRes({ ok: false, error: 'Unauthorized' }, 401);
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let randPart = '';
       for (let i = 0; i < 6; i++) randPart += chars[Math.floor(Math.random() * chars.length)];
@@ -704,7 +706,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       const rawInput = String(body.code || '').trim();
       const rawCode = rawInput.toUpperCase();
       if (!rawCode) return okRes({ ok: false, error: 'Please enter a reset code from the Owner.' }, 400);
-      if (isOwnerPasscode(rawInput)) return okRes({ ok: true, usedByOwner: true });
+      if (await isOwnerPasscode(rawInput)) return okRes({ ok: true, usedByOwner: true });
 
       const { data: rec } = await sb.from('reset_codes').select('*').eq('code', rawCode).maybeSingle();
       if (!rec) return okRes({ ok: false, error: 'Invalid or already-used Reset Code. Ask the Owner for a valid code.' }, 403);
