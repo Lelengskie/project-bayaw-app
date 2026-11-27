@@ -1202,17 +1202,22 @@ class AgriBoardApp {
   }
 
   // The full intro plays once a day (separately for visitors and signed-in reviewees)
+  // Full intro once a day (separately for visitors and signed-in reviewees); a quick entrance on every other visit
   maybePlayHomeIntro() {
     const root = document.getElementById('view-home');
-    if (!root) return;
+    if (!root || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const key = this.localDay() + (this.user.loggedIn ? 'm' : 'g');
     let seen = '';
     try { seen = localStorage.getItem('bayaw_home_intro') || ''; } catch (e) {}
-    if (seen === key || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    try { localStorage.setItem('bayaw_home_intro', key); } catch (e) {}
-    root.classList.remove('home-play'); void root.offsetWidth; root.classList.add('home-play');
+    const full = seen !== key;
+    if (full) { try { localStorage.setItem('bayaw_home_intro', key); } catch (e) {} }
+    root.classList.remove('home-play', 'home-quick'); void root.offsetWidth;
+    root.classList.add('home-play');
+    if (!full) root.classList.add('home-quick');
     clearTimeout(this.homeIntroTimer);
-    this.homeIntroTimer = setTimeout(() => root.classList.remove('home-play'), 4000);
+    // afterwards redraw with final values (count-ups pause while the tab is in the background)
+    this.homeIntroTimer = setTimeout(() => { root.classList.remove('home-play', 'home-quick'); this.renderHome(); }, full ? 4000 : 1500);
+    const t = full ? 1 : 0.25; // quick visits compress the timing
 
     const countUp = (el, to, delay, ms = 1300) => {
       if (!el) return;
@@ -1223,14 +1228,14 @@ class AgriBoardApp {
         requestAnimationFrame(tick);
       }, delay);
     };
-    if (this.user.loggedIn) countUp(document.getElementById('home-days'), this.homeDays, 900);
-    else { countUp(document.getElementById('home-g-q'), this.allItemsFlat.length, 1100); countUp(document.getElementById('home-g-ps'), this.allItemsFlat.filter(it => it.category === 'problem_solving').length, 1220); }
+    if (this.user.loggedIn) countUp(document.getElementById('home-days'), this.homeDays, 900 * t, full ? 1300 : 700);
+    else { countUp(document.getElementById('home-g-q'), this.allItemsFlat.length, 1100 * t, full ? 1300 : 700); countUp(document.getElementById('home-g-ps'), this.allItemsFlat.filter(it => it.category === 'problem_solving').length, 1220 * t, full ? 1300 : 700); }
 
     // Type the daily line, then fill the ring and bars once their cards are in
     const q = document.getElementById('home-quote');
     const text = this.homeQuote || q.textContent;
-    q.textContent = '';
-    setTimeout(() => {
+    if (full) q.textContent = '';
+    if (full) setTimeout(() => {
       let i = 0;
       const step = () => { q.innerHTML = this.escapeHtml(text.slice(0, ++i)) + '<span class="home-caret"></span>'; if (i < text.length) setTimeout(step, 22); else setTimeout(() => (q.textContent = text), 1800); };
       step();
@@ -1243,7 +1248,7 @@ class AgriBoardApp {
     setTimeout(() => {
       ring.style.transition = ''; ring.style.strokeDashoffset = ringTo;
       bars.forEach((b, i) => { b.style.transition = ''; b.style.width = barTo[i]; });
-    }, 2500);
+    }, full ? 2500 : 450);
   }
 
   updateAllProgressWidgets() {
