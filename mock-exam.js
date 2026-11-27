@@ -991,7 +991,7 @@
         const ceHtml = window.app.buildChoiceExplanationsHtml ? window.app.buildChoiceExplanationsHtml(dbItem, pickedTxt) : '';
         const ratHtml = window.app.formatRationaleHtml ? window.app.formatRationaleHtml(dbItem.rationale || '') : esc(dbItem.rationale || '');
         const imgsHtml = (Array.isArray(dbItem.images) && dbItem.images.length)
-          ? `<div class="pt-2 space-y-2">${dbItem.images.map(src => `<img src="${esc(src)}" class="max-h-64 rounded-xl border border-emerald-500/30 bg-white p-1" />`).join('')}</div>`
+          ? `<div class="pt-2 space-y-2">${dbItem.images.map(src => `<img src="${esc(src)}" loading="lazy" decoding="async" alt="Solution figure" class="max-h-64 rounded-xl border border-emerald-500/30 bg-white p-1" />`).join('')}</div>`
           : '';
         return `
           <div class="rounded-2xl bg-navy-950/90 border ${d.isCorrect ? 'border-emerald-500/35' : 'border-rose-500/40'} p-4 space-y-2.5">

@@ -582,7 +582,7 @@ class AgriBoardApp {
 
   async init() {
     try {
-      const res = await fetch('./abe_database.json?v=20261127j');
+      const res = await fetch('./abe_database.json?v=20261128a');
       this.db = await res.json();
       this.allItemsFlat = [];
       for (const area of this.db.areas) {
@@ -1269,7 +1269,7 @@ class AgriBoardApp {
       imgBox.classList.remove('hidden');
       imgBox.innerHTML = card.images.map(src => `
         <div class="study-img-wrapper relative rounded-xl overflow-hidden border border-blue-900/60 bg-white inline-block">
-          <img src="${this.fixAssetPath(src)}" class="study-solution-img max-h-56 p-1.5 object-contain blur-lg scale-105 opacity-60 transition-all duration-300 select-none pointer-events-none" />
+          <img src="${this.fixAssetPath(src)}" loading="lazy" decoding="async" alt="Solution figure" class="study-solution-img max-h-56 p-1.5 object-contain blur-lg scale-105 opacity-60 transition-all duration-300 select-none pointer-events-none" />
           <div class="study-img-veil absolute inset-0 bg-navy-950/65 backdrop-blur-md flex flex-col items-center justify-center p-3 text-center">
             <span class="text-xs font-extrabold text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Solution Image Hidden</span>
             <span class="text-xs text-slate-300 mt-0.5">Select an answer or press Show Answer to reveal clearly</span>
@@ -2116,7 +2116,7 @@ class AgriBoardApp {
           <button onclick="app.jumpFromVault(${it.area}, ${it.level}, '${it.id}')" class="text-sky-400 hover:underline font-bold">Study This Card →</button>
         </div>
         <div class="text-sm font-bold text-white">${this.escapeHtml(it.question)}</div>
-        ${it.images?.length ? `<div class="flex gap-2 pt-1">${it.images.map(s => `<img src="${this.fixAssetPath(s)}" class="max-h-36 rounded bg-white p-1"/>`).join('')}</div>` : ''}
+        ${it.images?.length ? `<div class="flex gap-2 pt-1">${it.images.map(s => `<img src="${this.fixAssetPath(s)}" loading="lazy" decoding="async" alt="Question figure" class="max-h-36 rounded bg-white p-1"/>`).join('')}</div>` : ''}
         <div class="text-xs font-bold text-emerald-400">Answer: ${this.escapeHtml(it.answer)}</div>
         ${it.rationale ? `<div class="text-xs text-slate-400 whitespace-pre-line">${this.escapeHtml(it.rationale)}</div>` : ''}
       </div>
