@@ -441,10 +441,10 @@ class AgriBoardApp {
   }
 
   async adminResetUserPassword(usernameKey, displayName) {
-    const newPassword = prompt(`Enter a new temporary password for ${displayName} (at least 4 characters). Their progress will be kept safe:`);
+    const newPassword = prompt(`Enter a new temporary password for ${displayName} (at least 6 characters). Their progress will be kept safe:`);
     if (newPassword === null) return;
-    if (newPassword.length < 4) {
-      alert('Password must be at least 4 characters.');
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters.');
       return;
     }
     const res = await this.apiCall('POST', { action: 'admin_reset_password', usernameKey, newPassword });
@@ -597,7 +597,16 @@ class AgriBoardApp {
       this.setupKeyboardShortcuts();
       this.fetchLiveLeaderboard();
       this.loadGlobalChat();
-      if (!this.user.loggedIn) {
+      // Signed in here before the login upgrade (or the login expired): sign in once more to keep saving progress
+      if (this.user.loggedIn && !(await window.bayawHasLogin?.(this.user.usernameKey))) {
+        const name = this.user.name || this.user.usernameKey;
+        this.user.loggedIn = false;
+        this.openAuthModal('login');
+        document.getElementById('auth-username-input').value = name;
+        document.getElementById('auth-modal-title').textContent = 'Please sign in again';
+        document.getElementById('auth-modal-sub').textContent = 'We upgraded account security. Sign in once with your usual password and your progress keeps saving.';
+        setTimeout(() => document.getElementById('auth-password-input')?.focus(), 80);
+      } else if (!this.user.loggedIn) {
         this.openAuthModal('login');
       } else {
         this.updateOwnerBadgeUI();
@@ -686,6 +695,7 @@ class AgriBoardApp {
       ? 'Pick a username and password. Your progress saves to the cloud.'
       : 'Sign in to continue your review. Your progress syncs across phone and PC.';
     document.getElementById('auth-password-input').autocomplete = isReg ? 'new-password' : 'current-password';
+    document.getElementById('auth-password-input').placeholder = isReg ? 'At least 6 characters' : 'Your password';
     this.updatePromoUI();
   }
 
@@ -702,8 +712,9 @@ class AgriBoardApp {
       err.classList.remove('hidden');
       return;
     }
-    if (password.length < 4) {
-      err.textContent = 'Password must be at least 4 characters.';
+    const minPw = this.authMode === 'register' ? 6 : 4; // older accounts may still have 4-5 character passwords
+    if (password.length < minPw) {
+      err.textContent = `Password must be at least ${minPw} characters.`;
       err.classList.remove('hidden');
       return;
     }
@@ -769,6 +780,7 @@ class AgriBoardApp {
         const data = await res.json();
         if (data?.kicked) {
           localStorage.removeItem(STORAGE_KEY);
+          window.bayawSignOut?.();
           this.user = this.loadUserState();
           this.openAuthModal('login');
           alert(`🔒 ${data.reason || 'Your access has ended.'}`);
@@ -782,6 +794,7 @@ class AgriBoardApp {
     // Push one final cloud sync before signing out
     await this.syncUserToLeaderboard();
     localStorage.removeItem(STORAGE_KEY);
+    await window.bayawSignOut?.();
     sessionStorage.removeItem('bayaw_admin_passcode');
     this.adminPasscode = '';
     this.isAdminVerified = false;

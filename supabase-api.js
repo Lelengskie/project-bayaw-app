@@ -1,7 +1,8 @@
 // Project Bayaw App — Direct Supabase Backend Adapter (100% Free Tier, Zero Netlify Credits!)
 const SUPABASE_URL = 'https://iqktfuofdxiuubkycvau.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_9KSkABDrgL41B-KfgEqFIQ_4372HQ1H';
-// Owner checks, sign-up, sign-in and chat badges run inside Supabase (bayaw_* functions, see site-tools/supabase-owner-lockdown.sql).
+// Owner checks, sign-up, sign-in and chat badges run inside Supabase (bayaw_* functions, see site-tools/supabase-owner-lockdown.sql
+// and site-tools/supabase-auth-upgrade.sql). Progress and PvP saves only work for your own account's real login.
 
 window.sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -15,6 +16,50 @@ function normKey(name) {
   return String(name || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
 }
 
+// ---------- Supabase Auth (real login) ----------
+// Each username gets a hidden login e-mail; it must match private.auth_email() in site-tools/supabase-auth-upgrade.sql.
+function authEmail(key) {
+  return 'u' + Array.from(new TextEncoder().encode(key), b => b.toString(16).padStart(2, '0')).join('') + '@users.project-bayaw-app.site';
+}
+// The login password is the salted SHA-256 the site already used, so old accounts can move over with their own password.
+const passwordHashFor = (key, password) => sha256Hex(`bayaw_salt_${key}_${password}`);
+
+async function authSignIn(key, hash) {
+  const { data, error } = await window.sbClient.auth.signInWithPassword({ email: authEmail(key), password: hash });
+  return error ? null : data.session;
+}
+
+async function authSignUp(key, hash) {
+  const { data, error } = await window.sbClient.auth.signUp({ email: authEmail(key), password: hash });
+  if (error) return { error: error.message, taken: /already registered|already exists/i.test(error.message) };
+  if (!data.session) return { error: 'Sign-up is not finished on the server yet. Ask the owner to turn off "Confirm email" in Supabase.' };
+  return { session: data.session };
+}
+
+function userFromAccount(acc) {
+  return {
+    id: acc.id, usernameKey: acc.username_key, name: acc.name,
+    isOwner: !!acc.is_owner, title: acc.title || '',
+    fullMockAccess: !!(acc.full_mock_access || acc.is_owner),
+    mockHistory: Array.isArray(acc.mock_history) ? acc.mock_history : [],
+    xp: acc.xp || 0, rp: acc.rp || 1200,
+    pvpWins: acc.pvp_wins || 0, pvpLosses: acc.pvp_losses || 0,
+    bestTimeSec: acc.best_time_sec ?? null,
+    srs: acc.srs || {}
+  };
+}
+
+// True when this browser holds a real login for the given username.
+window.bayawHasLogin = async function(usernameKey) {
+  try {
+    const { data } = await window.sbClient.auth.getSession();
+    return !!data.session && data.session.user?.email === authEmail(normKey(usernameKey));
+  } catch (e) { return false; }
+};
+window.bayawSignOut = async function() {
+  try { await window.sbClient.auth.signOut(); } catch (e) {}
+};
+
 async function callRpc(fn, args) {
   const { data, error } = await window.sbClient.rpc(fn, args);
   return error ? { ok: false, status: 500, error: error.message } : data;
@@ -22,7 +67,7 @@ async function callRpc(fn, args) {
 
 // Owner actions whose request body goes to bayaw_admin unchanged
 const SIMPLE_ADMIN = new Set(['verify', 'clear_chat', 'delete_feedback', 'set_promo', 'generate_access_code', 'delete_access_code',
-  'set_full_mock', 'revoke_account', 'renew_account', 'set_title', 'delete_user', 'reset_leaderboard', 'generate_reset_code']);
+  'set_full_mock', 'revoke_account', 'renew_account', 'set_title', 'reset_leaderboard', 'generate_reset_code']);
 
 // Unified API handler replacing /api/leaderboard so every single feature works seamlessly on Supabase + GitHub Pages
 window.bayawApi = async function(method, body = null, adminPasscode = '') {
@@ -332,11 +377,22 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       const accessCodeRaw = String(body.accessCode || '').trim();
       const key = normKey(displayName);
       if (key.length < 3) return okRes({ ok: false, error: 'Username must be at least 3 letters/numbers.' }, 400);
-      if (password.length < 4) return okRes({ ok: false, error: 'Password must be at least 4 characters.' }, 400);
+      if (password.length < 6) return okRes({ ok: false, error: 'Password must be at least 6 characters.' }, 400);
 
-      const passwordHash = await sha256Hex(`bayaw_salt_${key}_${password}`);
-      const res = await callRpc('bayaw_register', { p_key: key, p_name: displayName, p_hash: passwordHash, p_code: accessCodeRaw });
-      if (!res.ok) return out(res);
+      // Check username and code first so a failed sign-up does not leave a stray login behind
+      const check = await callRpc('bayaw_register_check', { p_key: key, p_code: accessCodeRaw });
+      if (!check.ok) return out(check);
+
+      const hash = await passwordHashFor(key, password);
+      const up = await authSignUp(key, hash);
+      if (up.error) {
+        // A login can be left over from an earlier attempt that stopped half way; it is yours if the password matches
+        if (!up.taken || !(await authSignIn(key, hash))) {
+          return okRes({ ok: false, error: up.taken ? 'That username is already taken! Switch to Sign In if it\'s yours.' : up.error }, up.taken ? 409 : 500);
+        }
+      }
+      const res = await callRpc('bayaw_register', { p_key: key, p_name: displayName, p_hash: hash, p_code: accessCodeRaw });
+      if (!res.ok) { await window.bayawSignOut(); return out(res); }
       const isOwnerMaster = !!res.isOwnerMaster;
 
       return okRes({
@@ -356,23 +412,21 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       const key = normKey(displayName);
       if (!key || !password) return okRes({ ok: false, error: 'Enter both username and password.' }, 400);
 
-      const hash = await sha256Hex(`bayaw_salt_${key}_${password}`);
-      const res = await callRpc('bayaw_login', { p_key: key, p_hash: hash });
-      if (!res.ok) return out(res);
-      const acc = res.account;
-      return okRes({
-        ok: true,
-        user: {
-          id: acc.id, usernameKey: acc.username_key, name: acc.name,
-          isOwner: !!acc.is_owner, title: acc.title || '',
-          fullMockAccess: !!(acc.full_mock_access || acc.is_owner),
-          mockHistory: Array.isArray(acc.mock_history) ? acc.mock_history : [],
-          xp: acc.xp || 0, rp: acc.rp || 1200,
-          pvpWins: acc.pvp_wins || 0, pvpLosses: acc.pvp_losses || 0,
-          bestTimeSec: acc.best_time_sec ?? null,
-          srs: acc.srs || {}
+      const hash = await passwordHashFor(key, password);
+      if (!(await authSignIn(key, hash))) {
+        // Not on the new login yet: check the old password, then move the account over (one time)
+        const legacy = await callRpc('bayaw_login', { p_key: key, p_hash: hash });
+        if (!legacy.ok) return out(legacy);
+        const up = await authSignUp(key, hash);
+        if (up.error) {
+          return okRes({ ok: false, error: up.taken ? 'Your sign-in needs a quick fix. Ask the owner to reset your password.' : up.error }, 500);
         }
-      });
+        const link = await callRpc('bayaw_link_auth', { p_key: key, p_hash: hash });
+        if (!link.ok) { await window.bayawSignOut(); return out(link); }
+      }
+      const me = await callRpc('bayaw_me', {});
+      if (!me.ok) { await window.bayawSignOut(); return out(me); }
+      return okRes({ ok: true, user: userFromAccount(me.account) });
     }
 
     if (action === 'get_mock_access') {
@@ -445,10 +499,15 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
     if (action === 'admin_reset_password') {
       const key = normKey(body.usernameKey);
       const newPw = String(body.newPassword || '');
-      if (!key || newPw.length < 4) {
-        return okRes({ ok: false, error: 'New password must be at least 4 characters.' }, 400);
+      if (!key || newPw.length < 6) {
+        return okRes({ ok: false, error: 'New password must be at least 6 characters.' }, 400);
       }
-      return out(await admin('reset_password', { usernameKey: key, hash: await sha256Hex(`bayaw_salt_${key}_${newPw}`) }));
+      // Changes both the old password and the real login password
+      return out(await callRpc('bayaw_admin_auth', { p_pass: adminPasscode || '', p_action: 'reset_password', p: { usernameKey: key, hash: await passwordHashFor(key, newPw) } }));
+    }
+
+    if (action === 'admin_delete_user') {
+      return out(await callRpc('bayaw_admin_auth', { p_pass: adminPasscode || '', p_action: 'delete_user', p: body }));
     }
 
     if (action === 'verify_reset_code') {
