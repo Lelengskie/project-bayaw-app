@@ -216,13 +216,13 @@
       if (badge) {
         if (window.app?.user?.isOwner) {
           badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-xs font-black text-amber-300';
-          badge.textContent = '👑 OWNER — Full 100-Item PRC Board Exam Unlocked';
+          badge.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER — Full 100-Item PRC Board Exam Unlocked';
         } else if (unlocked) {
           badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-black text-emerald-300';
-          badge.textContent = '✅ FULL BOARD MOCK UNLOCKED (Owner Granted)';
+          badge.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> FULL BOARD MOCK UNLOCKED (Owner Granted)';
         } else {
           badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/45 text-xs font-extrabold text-sky-200';
-          badge.textContent = '⚡ 50-Item Quick Mocks FREE • Full 100-Item Board Mock is Owner-Granted';
+          badge.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg> 50-Item Quick Mocks FREE • Full 100-Item Board Mock is Owner-Granted';
         }
       }
 
@@ -255,7 +255,7 @@
                 </div>
               </div>
               <div class="flex items-center gap-2">
-                <button onclick="bayawMock.resumeSession()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-navy-950 text-xs font-black shadow">▶ Resume Exam</button>
+                <button onclick="bayawMock.resumeSession()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-navy-950 text-xs font-black shadow"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Resume Exam</button>
                 <button onclick="bayawMock.discardSession()" class="px-3 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-bold">Discard</button>
               </div>
             </div>
@@ -577,7 +577,7 @@
         if (s.strictMode) pauseBtn.classList.add('hidden');
         else {
           pauseBtn.classList.remove('hidden');
-          pauseBtn.textContent = '⏸ Pause';
+          pauseBtn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> Pause';
         }
       }
 
@@ -613,7 +613,7 @@
       if (!this.activeSession || this.activeSession.strictMode) return;
       this.paused = !this.paused;
       const btn = document.getElementById('mock-pause-btn');
-      if (btn) btn.textContent = this.paused ? '▶ Resume' : '⏸ Pause';
+      if (btn) btn.innerHTML = this.paused ? '<svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Resume' : '<svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> Pause';
       const overlay = document.getElementById('mock-pause-overlay');
       if (overlay) overlay.classList.toggle('hidden', !this.paused);
     },
@@ -652,7 +652,7 @@
       const flagBtn = document.getElementById('mock-flag-btn');
       if (flagBtn) {
         const flagged = !!s.flags[s.idx];
-        flagBtn.textContent = flagged ? '🚩 Flagged' : '🏳️ Flag for Review';
+        flagBtn.innerHTML = flagged ? '<svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Flagged' : '<svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Flag for Review';
         flagBtn.className = flagged
           ? 'px-3 py-1 rounded-lg bg-amber-500/25 border border-amber-400 text-xs font-extrabold text-amber-200'
           : 'px-3 py-1 rounded-lg bg-navy-900 border border-blue-900/60 text-xs font-bold text-slate-300 hover:text-amber-200';

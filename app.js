@@ -582,7 +582,7 @@ class AgriBoardApp {
 
   async init() {
     try {
-      const res = await fetch('./abe_database.json?v=20261128a');
+      const res = await fetch('./abe_database.json?v=20261128c');
       this.db = await res.json();
       this.allItemsFlat = [];
       for (const area of this.db.areas) {
@@ -658,10 +658,10 @@ class AgriBoardApp {
     if (!inp || !btn) return;
     if (inp.type === 'password') {
       inp.type = 'text';
-      btn.textContent = '🙈 Hide';
+      btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye-off"/></svg> Hide';
     } else {
       inp.type = 'password';
-      btn.textContent = '👁️ Show';
+      btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Show';
     }
   }
 
@@ -1247,9 +1247,9 @@ class AgriBoardApp {
       nextRevEl.textContent = 'New card';
     } else if (rec.status === 'learning') {
       const remSec = Math.max(0, Math.ceil(((rec.due || 0) - Date.now()) / 1000));
-      nextRevEl.textContent = remSec === 0 ? '🔴 Due NOW (Re-review!)' : `🔴 Again in ${remSec}s`;
+      nextRevEl.innerHTML = remSec === 0 ? '<svg class="ic" aria-hidden="true"><use href="#i-rotate-ccw"/></svg> Due now' : `<svg class="ic" aria-hidden="true"><use href="#i-timer"/></svg> Again in ${remSec}s`;
     } else {
-      nextRevEl.textContent = `✅ ${rec.interval || 3} days`;
+      nextRevEl.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg> ${rec.interval || 3} days`;
     }
 
     // Show Anki Re-queue notification banner if this card came back automatically
@@ -1288,6 +1288,11 @@ class AgriBoardApp {
       choicesBox.classList.remove('hidden');
       flipWrap.classList.add('hidden');
       const letters = ['A', 'B', 'C', 'D'];
+      // New order once per visit, so a repeat review tests the content, not "it was C"
+      if (!card._shuffled) {
+        for (let i = card.choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [card.choices[i], card.choices[j]] = [card.choices[j], card.choices[i]]; }
+        card._shuffled = true;
+      }
       choicesBox.innerHTML = card.choices.map((ch, idx) => `
         <button onclick="app.selectStudyMcqChoice(${idx})" id="study-choice-${idx}" class="w-full min-h-[48px] text-left px-3 sm:px-3.5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-emerald-400/50 transition-colors flex items-center gap-3">
           <span class="w-6 h-6 rounded-md bg-navy-800 text-sky-300 font-mono text-xs font-extrabold flex items-center justify-center shrink-0">${letters[idx]}</span>
@@ -1930,7 +1935,7 @@ class AgriBoardApp {
 
     document.getElementById('pvp-card-container').classList.add('hidden');
     document.getElementById('pvp-result-box').classList.remove('hidden');
-    document.getElementById('pvp-result-badge').textContent = won ? '🏆 VICTORY • DECK CLEARED FIRST!' : '⚔️ DEFEAT • OPPONENT FINISHED FIRST';
+    document.getElementById('pvp-result-badge').innerHTML = won ? '<svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> VICTORY • DECK CLEARED FIRST!' : '<svg class="ic" aria-hidden="true"><use href="#i-swords"/></svg> DEFEAT • OPPONENT FINISHED FIRST';
     document.getElementById('pvp-result-title').textContent = won ? `Deck Cleared in ${elapsed.toFixed(1)}s!` : `${this.pvpOpponent.name} Won!`;
     document.getElementById('pvp-result-subtitle').textContent = won
       ? `You outpaced ${this.pvpOpponent.name} (${this.pvpOpponent.remaining} cards left in their deck).`
@@ -2120,7 +2125,12 @@ class AgriBoardApp {
         <div class="text-xs font-bold text-emerald-400">Answer: ${this.escapeHtml(it.answer)}</div>
         ${it.rationale ? `<div class="text-xs text-slate-400 whitespace-pre-line">${this.escapeHtml(it.rationale)}</div>` : ''}
       </div>
-    `).join('');
+    `).join('') || `
+      <div class="panel p-8 text-center space-y-2">
+        <svg class="ic text-slate-500" style="width:28px;height:28px" aria-hidden="true"><use href="#i-search"/></svg>
+        <div class="text-sm font-bold text-white">No questions match${q ? ` “${this.escapeHtml(q)}”` : ''}</div>
+        <div class="text-xs text-slate-400">Try a shorter keyword, a PAES number, or set the filters back to All.</div>
+      </div>`;
   }
 
   jumpFromVault(areaId, levelNum, itemId) {
@@ -2317,7 +2327,7 @@ class AgriBoardApp {
     try {
       const res = await this.apiCall('POST', { action: 'feedback_submit', name: this.user.name || 'Guest', category: cat, message });
       if (res.ok) {
-        st.textContent = '✅ Sent to the Owner! Thank you for helping improve Project Bayaw App.';
+        st.textContent = 'Sent to the Owner! Thank you for helping improve Project Bayaw App.';
         st.className = 'text-xs font-semibold text-emerald-400';
         st.classList.remove('hidden');
         if (msgEl) msgEl.value = '';
@@ -2414,7 +2424,7 @@ class AgriBoardApp {
 
     const prevTxt = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ Uploading...';
+    btn.textContent = 'Uploading…';
     st.textContent = 'Uploading your reviewer to the Owner Inbox...';
     st.className = 'text-xs font-semibold text-sky-300';
     st.classList.remove('hidden');
@@ -2428,15 +2438,15 @@ class AgriBoardApp {
         notes
       });
       if (res.ok) {
-        st.textContent = '✅ Uploaded! Thank you for sharing — the Owner can now download it and credit your contribution.';
+        st.textContent = 'Uploaded! Thank you for sharing — the Owner can now download it and credit your contribution.';
         st.className = 'text-xs font-semibold text-emerald-400';
         setTimeout(() => this.closeSubmitReviewerModal(), 1600);
       } else {
-        st.textContent = `❌ ${res.error || 'Upload failed. Please try again.'}`;
+        st.textContent = `${res.error || 'Upload failed. Please try again.'}`;
         st.className = 'text-xs font-semibold text-rose-400';
       }
     } catch (e) {
-      st.textContent = '❌ Upload error. Check your internet connection and try again.';
+      st.textContent = 'Upload error. Check your internet connection and try again.';
       st.className = 'text-xs font-semibold text-rose-400';
     } finally {
       btn.disabled = false;
@@ -2694,3 +2704,25 @@ class AgriBoardApp {
 const app = new AgriBoardApp();
 window.app = app;
 window.addEventListener('DOMContentLoaded', () => app.init());
+
+// Installable app: offline cache + "Install App" buttons (shown only when the browser can install)
+let deferredInstall = null;
+const showInstall = on => document.querySelectorAll('.install-app-btn').forEach(b => b.classList.toggle('hidden', !on));
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; showInstall(true); });
+window.addEventListener('appinstalled', () => { deferredInstall = null; showInstall(false); });
+window.addEventListener('DOMContentLoaded', () => { if (isIos && !isStandalone()) showInstall(true); });
+AgriBoardApp.prototype.installApp = async function () {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    await deferredInstall.userChoice;
+    deferredInstall = null;
+    showInstall(false);
+  } else if (isIos) {
+    alert('To install on iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".');
+  }
+};
