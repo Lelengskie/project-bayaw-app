@@ -82,6 +82,30 @@
     return `${areaId}.1`;
   }
 
+  function normChoiceBase(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  function extractLawOrCode(s) {
+    const m = String(s || '').match(/\b(?:r\.?\s*a\.?|p\.?\s*d\.?|pns|paes|eo)\s*[-#.]?\s*(\d{2,6})\b/i);
+    return m ? m[1] : '';
+  }
+
+  function isTooSimilarChoice(a, b) {
+    const na = normChoiceBase(a);
+    const nb = normChoiceBase(b);
+    if (!na || !nb) return true;
+    if (na === nb) return true;
+    if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
+    const la = extractLawOrCode(a);
+    const lb = extractLawOrCode(b);
+    if (la && lb && la === lb) return true;
+    return false;
+  }
+
   function formatHMS(totalSec) {
     const s = Math.max(0, Math.floor(totalSec));
     const h = Math.floor(s / 3600);
@@ -452,26 +476,32 @@
         const ans = String(it.answer || '').trim();
         let choices = [];
         if (Array.isArray(it.choices) && it.choices.length >= 2) {
-          const clean = it.choices.map(c => String(c || '').trim()).filter(Boolean);
+          const clean = [];
+          for (const rawC of it.choices) {
+            const c = String(rawC || '').trim();
+            if (c && !clean.some(prev => isTooSimilarChoice(prev, c))) clean.push(c);
+          }
           const hasAns = clean.some(c => c.toLowerCase() === ans.toLowerCase());
-          choices = hasAns ? clean.slice(0, 4) : [ans, ...clean.slice(0, 3)];
+          choices = hasAns ? clean.slice(0, 4) : [ans, ...clean.filter(c => !isTooSimilarChoice(c, ans)).slice(0, 3)];
         } else {
-          // Pick 3 unique distractors from same subtopic first, then same area
-          const sameSub = shuffleArr(allAreaItems.filter(x => x.id !== it.id && x.subtopic === it.subtopic && x.answer && x.answer.trim().toLowerCase() !== ans.toLowerCase()));
+          // Pick 3 unique, non-equivalent distractors from same subtopic first, then same area
+          const sameSub = shuffleArr(allAreaItems.filter(x => x.id !== it.id && x.subtopic === it.subtopic && x.answer));
           const wrongs = [];
-          const seenL = new Set([ans.toLowerCase()]);
+          const pickedAll = [ans];
+          const canAdd = (txt) => txt && txt.length <= 140 && !pickedAll.some(p => isTooSimilarChoice(p, txt));
+
           for (const cand of sameSub) {
             const txt = String(cand.answer).trim();
-            if (txt && txt.length <= 140 && !seenL.has(txt.toLowerCase())) {
-              seenL.add(txt.toLowerCase());
+            if (canAdd(txt)) {
+              pickedAll.push(txt);
               wrongs.push(txt);
               if (wrongs.length === 3) break;
             }
           }
           if (wrongs.length < 3) {
             for (const txt of shuffleArr(distractorPool)) {
-              if (!seenL.has(txt.toLowerCase())) {
-                seenL.add(txt.toLowerCase());
+              if (canAdd(txt)) {
+                pickedAll.push(txt);
                 wrongs.push(txt);
                 if (wrongs.length === 3) break;
               }
@@ -640,15 +670,11 @@
       const qTextEl = document.getElementById('mock-q-text');
       if (qTextEl) qTextEl.textContent = dbItem.question || '';
 
+      // Never show solution/explanation images during an active exam!
       const imgWrap = document.getElementById('mock-q-images');
       if (imgWrap) {
-        if (Array.isArray(dbItem.images) && dbItem.images.length) {
-          imgWrap.classList.remove('hidden');
-          imgWrap.innerHTML = dbItem.images.map(src => `<img src="${esc(src)}" class="max-h-64 rounded-xl border border-blue-900/50 bg-white p-1 mx-auto" />`).join('');
-        } else {
-          imgWrap.classList.add('hidden');
-          imgWrap.innerHTML = '';
-        }
+        imgWrap.classList.add('hidden');
+        imgWrap.innerHTML = '';
       }
 
       const letters = ['A', 'B', 'C', 'D'];
@@ -971,6 +997,9 @@
         const yourAns = d.picked !== undefined ? `${letters[d.picked]}. ${d.choices[d.picked]}` : 'Unanswered';
         const corAns = `${letters[d.correctIdx]}. ${d.choices[d.correctIdx]}`;
         const ratHtml = window.app.formatRationaleHtml ? window.app.formatRationaleHtml(dbItem.rationale || '') : esc(dbItem.rationale || '');
+        const imgsHtml = (Array.isArray(dbItem.images) && dbItem.images.length)
+          ? `<div class="pt-2 space-y-2">${dbItem.images.map(src => `<img src="${esc(src)}" class="max-h-64 rounded-xl border border-emerald-500/30 bg-white p-1" />`).join('')}</div>`
+          : '';
         return `
           <div class="rounded-2xl bg-navy-950/90 border ${d.isCorrect ? 'border-emerald-500/35' : 'border-rose-500/40'} p-4 space-y-2.5">
             <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
@@ -986,10 +1015,11 @@
                 <span class="font-bold">Verified Answer:</span> ${esc(corAns)}
               </div>
             </div>
-            ${ratHtml ? `
+            ${(ratHtml || imgsHtml) ? `
               <div class="rounded-xl bg-navy-900/90 border border-emerald-500/25 p-3 space-y-1">
                 <div class="text-[10px] font-black uppercase tracking-wider text-emerald-400">VERIFIED ANSWER & RATIONALE</div>
                 ${ratHtml}
+                ${imgsHtml}
               </div>
             ` : ''}
           </div>
