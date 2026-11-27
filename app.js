@@ -2,6 +2,16 @@
 const STORAGE_KEY = 'agriboard_prep_abe_v2';
 // PRC 2027 schedule: ABE licensure exam on Nov 22-23, 2027 (prc.gov.ph/2027-schedule-examination). Reviewees can change it.
 const DEFAULT_EXAM_DATE = '2027-11-22';
+// Shown one per day on the home dashboard
+const DAILY_LINES = [
+  "One more card today is one less surprise on exam day.",
+  "You don't need to be perfect. You need to keep going.",
+  "The board exam rewards the reviewee who showed up on the boring days.",
+  "A little effort today, Engr. on your name tomorrow.",
+  "Every question you miss here is one you won't miss in November.",
+  "Small daily reviews beat one big cram. Your streak proves it.",
+  "Picture your name on the list of passers. One more level.",
+];
 const PRC_SCHEDULE = { filingStart: '2027-08-24', filingEnd: '2027-10-25', examEnd: '2027-11-23', results: '2027-11-29' };
 
 class AgriBoardApp {
@@ -595,8 +605,10 @@ class AgriBoardApp {
       }
       document.getElementById('loading-overlay').classList.add('hidden');
       this.renderLevelTiles();
-      this.selectStudyLevel(1, 1);
+      const saved = this.dailyState();
+      this.selectStudyLevel(saved.lastArea || 1, saved.lastLevel || 1);
       this.updateAllProgressWidgets();
+      this.showView('home');
       this.setupKeyboardShortcuts();
       this.fetchLiveLeaderboard();
       this.loadGlobalChat();
@@ -761,8 +773,10 @@ class AgriBoardApp {
         this.updateOwnerBadgeUI();
         this.updateAllProgressWidgets();
         this.renderLevelTiles();
-        this.selectStudyLevel(this.activeStudyArea || 1, this.activeStudyLevel || 1);
+        const saved = this.dailyState();
+        this.selectStudyLevel(saved.lastArea || 1, saved.lastLevel || 1);
         this.fetchLiveLeaderboard();
+        if (!document.getElementById('view-home')?.classList.contains('hidden')) this.maybePlayHomeIntro();
       } else {
         err.textContent = data.error || 'Authentication failed. Please check your details.';
         err.classList.remove('hidden');
@@ -806,7 +820,7 @@ class AgriBoardApp {
     this.updateOwnerBadgeUI();
     this.updateAllProgressWidgets();
     this.renderLevelTiles();
-    this.showView('dashboard');
+    this.showView('home');
     this.openAuthModal('login');
   }
 
@@ -877,7 +891,7 @@ class AgriBoardApp {
   }
 
   showView(viewName) {
-    const views = ['dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'weak', 'admin', 'mock-exam'];
+    const views = ['home', 'dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'weak', 'admin', 'mock-exam'];
     views.forEach(v => {
       const el = document.getElementById(`view-${v}`);
       if (el) el.classList.add('hidden');
@@ -895,6 +909,7 @@ class AgriBoardApp {
     if (viewName === 'vault') this.renderVault();
     if (viewName === 'progress') this.renderAllLevelsProgress();
     if (viewName === 'weak') this.renderWeakTopics();
+    if (viewName === 'home') { this.renderHome(); this.maybePlayHomeIntro(); }
   }
 
   openPvpLobby() {
@@ -1118,8 +1133,166 @@ class AgriBoardApp {
     else show('sched-results', 'Out', '');
   }
 
+  // ==================== HOME DASHBOARD ====================
+  daysUntil(ymd) {
+    const [y, m, d] = ymd.split('-').map(Number);
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d) - start) / 86400000);
+  }
+
+  continueStudying() {
+    const d = this.dailyState();
+    const area = d.lastArea || this.activeStudyArea || 1, level = d.lastLevel || this.activeStudyLevel || 1;
+    this.showView('dashboard');
+    if (this.problemSolvingOnly || this.drillLabel || this.activeStudyArea !== area || this.activeStudyLevel !== level) this.selectStudyLevel(area, level);
+    this.scrollToStudySession();
+  }
+
+  renderHome() {
+    const root = document.getElementById('view-home');
+    if (!root || !this.db) return;
+    const $ = (id) => document.getElementById(id);
+    const guest = !this.user.loggedIn;
+    root.classList.toggle('is-guest', guest);
+    const d = this.dailyState();
+    const h = new Date().getHours();
+    const hello = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    $('home-hello').textContent = `${hello} · ${new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'short', day: 'numeric' })}`;
+    const title = guest ? 'Pass the ABE board exam, one card at a time.' : `Welcome back, ${this.user.name || 'reviewee'}.`;
+    $('home-title').innerHTML = title.split(' ').map((w, i) => `<span class="h-word" style="--d:${(0.25 + i * 0.08).toFixed(2)}s">${this.escapeHtml(w)}</span>`).join(' ');
+    this.homeQuote = DAILY_LINES[Math.floor(Date.now() / 86400000) % DAILY_LINES.length];
+    $('home-quote').textContent = this.homeQuote;
+
+    // Countdown and timeline
+    const exam = d.examDate || DEFAULT_EXAM_DATE;
+    const days = this.daysUntil(exam);
+    this.homeDays = Math.max(0, days);
+    $('home-days').textContent = days >= 0 ? days.toLocaleString() : '—';
+    const [ey, em, ed] = exam.split('-').map(Number);
+    $('home-exam-date').textContent = exam === DEFAULT_EXAM_DATE ? 'Nov 22–23, 2027 · Mon & Tue'
+      : new Date(ey, em - 1, ed).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const toResults = this.daysUntil(PRC_SCHEDULE.results);
+    $('home-timeline').classList.toggle('hidden', exam !== DEFAULT_EXAM_DATE || toResults < 0);
+    if (toResults > 0) {
+      // Spaced by date, but kept apart enough to read on a phone
+      const pct = (ymd) => Math.max(0, this.daysUntil(ymd)) / toResults * 100;
+      const ex = Math.min(pct(DEFAULT_EXAM_DATE), 93), fe = Math.min(pct(PRC_SCHEDULE.filingEnd), ex - 7), fs = Math.min(pct(PRC_SCHEDULE.filingStart), fe - 7);
+      const place = (id, p, passed) => { const el = $(id); el.style.left = `calc(6px + (100% - 12px) * ${Math.max(0, p) / 100})`; el.classList.toggle('passed', passed); };
+      place('home-tl-fs', fs, this.daysUntil(PRC_SCHEDULE.filingStart) <= 0);
+      place('home-tl-fe', fe, this.daysUntil(PRC_SCHEDULE.filingEnd) < 0);
+      place('home-tl-ex', ex, false);
+      $('home-tl-done').style.width = `calc((100% - 12px) * ${ex / 100})`;
+      $('home-tl-today').textContent = new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+    }
+
+    // Continue button
+    $('home-continue-label').textContent = `Area ${d.lastArea || 1} · Level ${d.lastLevel || 1}`;
+
+    // Visitor stats
+    $('home-g-q').textContent = this.allItemsFlat.length.toLocaleString();
+    $('home-g-ps').textContent = this.allItemsFlat.filter(it => it.category === 'problem_solving').length.toLocaleString();
+
+    // Today's goal
+    $('home-today').textContent = d.count;
+    $('home-goal').textContent = d.goal;
+    $('home-ring').style.strokeDashoffset = 213.6 * (1 - Math.min(1, d.count / d.goal));
+    const alive = d.lastHit === this.localDay() || d.lastHit === this.localDay(-1);
+    const streak = alive ? (d.streak || 0) : 0;
+    const left = Math.max(0, d.goal - d.count);
+    $('home-today-sub').textContent = left ? `${left} more to hit today's goal` : 'Goal done today';
+
+    // Streak: last 7 days, ending today
+    $('home-streak').textContent = streak;
+    $('home-streak-unit').textContent = streak === 1 ? 'day' : 'days';
+    const lastOff = d.lastHit === this.localDay() ? 0 : -1;
+    $('home-week').innerHTML = [-6, -5, -4, -3, -2, -1, 0].map(k => {
+      const day = new Date(); day.setDate(day.getDate() + k);
+      const hit = streak > 0 && k <= lastOff && k > lastOff - streak;
+      const cls = hit ? 'hit' : k === 0 ? 'today' : '';
+      return `<span class="home-day ${cls}" title="${day.toLocaleDateString('en-PH', { weekday: 'long' })}${hit ? ': goal hit' : ''}">${'SMTWTFS'[day.getDay()]}</span>`;
+    }).join('');
+
+    // Where you stand
+    const names = { 1: 'Power & Machinery', 2: 'Land & Water', 3: 'Structures & Bioprocess' };
+    const tints = { 1: 'var(--c-inkblue-400)', 2: 'var(--c-green-400)', 3: 'var(--c-plum-400)' };
+    const stats = [1, 2, 3].map(id => ({ id, ...this.getAreaStats(id) }));
+    $('home-areas').innerHTML = stats.map(s => {
+      const pct = Math.round(s.pct);
+      return `<button onclick="app.selectAreaAndShow(${s.id})" class="w-full text-left grid grid-cols-[1fr_auto] gap-x-2.5 gap-y-1 items-center py-2 border-b border-rule last:border-b-0">
+          <span class="text-sm truncate">Area ${s.id} · ${names[s.id]}</span><span class="font-mono text-xs text-slate-400">${pct}%</span>
+          <span class="home-bar col-span-2"><b style="width:${Math.max(pct ? 2 : 0, pct)}%; background:rgb(${tints[s.id]})"></b></span>
+        </button>`;
+    }).join('');
+
+    // Weak spots (same list and order as the Weak Topics page)
+    this.weakTopicsCache = this.getWeakTopics().slice(0, 10);
+    const weak = this.weakTopicsCache.slice(0, 3);
+    $('home-weak').innerHTML = weak.length ? weak.map((t, i) => `
+        <div class="flex items-center gap-2.5 py-2.5 border-b border-rule last:border-b-0">
+          <span class="label-mono shrink-0">A${t.area}</span>
+          <span class="text-sm truncate min-w-0 flex-1" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>
+          <span class="font-mono text-xs text-slate-400 shrink-0">${t.missed.length} missed</span>
+          <button onclick="app.drillWeakTopic(${i})" class="shrink-0 min-h-[34px] px-3 rounded-lg border border-rule text-xs font-semibold text-emerald-300 hover:border-emerald-500">Drill</button>
+        </div>`).join('')
+      : '<p class="text-sm text-slate-400 py-2">Answer a few questions and the topics you keep missing show up here.</p>';
+
+    // Next best move: the area with the most ground left to cover
+    const next = stats.slice().sort((a, b) => (a.pct - b.pct) || (b.total - a.total))[0];
+    $('home-next-title').textContent = `Start with Area ${next.id}`;
+    $('home-next-text').textContent = `${names[next.id]}: ${next.total.toLocaleString()} items, and you've mastered ${Math.round(next.pct)}%. A few levels a day there closes the gap fastest.`;
+    $('home-next-hint').textContent = !left ? 'Goal done today. Anything extra is a bonus.'
+      : streak ? `Finish today's goal (${left} to go) to keep your ${streak}-day streak.`
+      : `Answer ${d.goal} questions today to start a streak.`;
+  }
+
+  // The full intro plays once a day (separately for visitors and signed-in reviewees)
+  maybePlayHomeIntro() {
+    const root = document.getElementById('view-home');
+    if (!root) return;
+    const key = this.localDay() + (this.user.loggedIn ? 'm' : 'g');
+    let seen = '';
+    try { seen = localStorage.getItem('bayaw_home_intro') || ''; } catch (e) {}
+    if (seen === key || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try { localStorage.setItem('bayaw_home_intro', key); } catch (e) {}
+    root.classList.remove('home-play'); void root.offsetWidth; root.classList.add('home-play');
+    clearTimeout(this.homeIntroTimer);
+    this.homeIntroTimer = setTimeout(() => root.classList.remove('home-play'), 4000);
+
+    const countUp = (el, to, delay, ms = 1300) => {
+      if (!el) return;
+      el.textContent = '0';
+      setTimeout(() => {
+        const t0 = performance.now();
+        const tick = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))).toLocaleString(); if (p < 1) requestAnimationFrame(tick); };
+        requestAnimationFrame(tick);
+      }, delay);
+    };
+    if (this.user.loggedIn) countUp(document.getElementById('home-days'), this.homeDays, 900);
+    else { countUp(document.getElementById('home-g-q'), this.allItemsFlat.length, 1100); countUp(document.getElementById('home-g-ps'), this.allItemsFlat.filter(it => it.category === 'problem_solving').length, 1220); }
+
+    // Type the daily line, then fill the ring and bars once their cards are in
+    const q = document.getElementById('home-quote');
+    const text = this.homeQuote || q.textContent;
+    q.textContent = '';
+    setTimeout(() => {
+      let i = 0;
+      const step = () => { q.innerHTML = this.escapeHtml(text.slice(0, ++i)) + '<span class="home-caret"></span>'; if (i < text.length) setTimeout(step, 22); else setTimeout(() => (q.textContent = text), 1800); };
+      step();
+    }, 1600);
+    const ring = document.getElementById('home-ring');
+    const bars = [...root.querySelectorAll('.home-bar > b')];
+    const ringTo = ring.style.strokeDashoffset, barTo = bars.map(b => b.style.width);
+    ring.style.transition = 'none'; ring.style.strokeDashoffset = 213.6;
+    bars.forEach(b => { b.style.transition = 'none'; b.style.width = '0%'; });
+    setTimeout(() => {
+      ring.style.transition = ''; ring.style.strokeDashoffset = ringTo;
+      bars.forEach((b, i) => { b.style.transition = ''; b.style.width = barTo[i]; });
+    }, 2500);
+  }
+
   updateAllProgressWidgets() {
     this.renderToday();
+    if (!document.getElementById('view-home')?.classList.contains('hidden') && !document.getElementById('view-home')?.classList.contains('home-play')) this.renderHome();
     if (!this.db) return;
     const s1 = this.getAreaStats(1);
     const s2 = this.getAreaStats(2);
@@ -1245,6 +1418,8 @@ class AgriBoardApp {
     this.drillLabel = null;
     this.activeStudyArea = areaId;
     this.activeStudyLevel = levelNum;
+    const daily = this.dailyState();
+    daily.lastArea = areaId; daily.lastLevel = levelNum;
     const lst = this.getLevelStats(areaId, levelNum);
     this.currentDeck = [...lst.items];
 
