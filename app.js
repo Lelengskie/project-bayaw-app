@@ -94,7 +94,7 @@ class AgriBoardApp {
 
   scheduleLeaderboardSync() {
     if (this.syncDebounceTimer) clearTimeout(this.syncDebounceTimer);
-    this.syncDebounceTimer = setTimeout(() => this.syncUserToLeaderboard(), 600);
+    this.syncDebounceTimer = setTimeout(() => this.syncUserToLeaderboard(), 12000);
   }
 
   async syncUserToLeaderboard() {
@@ -604,9 +604,15 @@ class AgriBoardApp {
         this.syncUserToLeaderboard();
         this.sendHeartbeat();
       }
-      setInterval(() => this.fetchLiveLeaderboard(), 20000);
-      setInterval(() => { if (!document.hidden) this.loadGlobalChat(); }, 2000);
-      setInterval(() => this.sendHeartbeat(), 30000);
+      setInterval(() => { if (!document.hidden) this.fetchLiveLeaderboard(); }, 60000);
+      setInterval(() => { if (!document.hidden) this.loadGlobalChat(); }, 12000);
+      setInterval(() => { if (!document.hidden) this.sendHeartbeat(); }, 90000);
+      window.addEventListener('beforeunload', () => {
+        if (this.syncDebounceTimer) {
+          clearTimeout(this.syncDebounceTimer);
+          this.syncUserToLeaderboard();
+        }
+      });
     } catch (err) {
       document.getElementById('loading-overlay').innerHTML = `
         <div class="text-rose-400 font-bold text-lg">Failed to load abe_database.json</div>
@@ -1330,16 +1336,82 @@ class AgriBoardApp {
       }
     });
 
-    this.revealStudyAnswer();
+    this.revealStudyAnswer(chosen);
   }
 
-  revealStudyAnswer() {
+  buildChoiceExplanationsHtml(card, chosenAnswer = null) {
+    const ce = card?.choiceExplanations;
+    if (!ce || typeof ce !== 'object') return '';
+    const ans = String(card.answer || '').trim();
+    const chosen = chosenAnswer ? String(chosenAnswer).trim() : '';
+    const isWrongPick = chosen && chosen.toLowerCase() !== ans.toLowerCase();
+
+    const findExp = (txt) => {
+      if (!txt) return '';
+      if (ce[txt]) return ce[txt];
+      const low = txt.toLowerCase();
+      const k = Object.keys(ce).find(x => x.trim().toLowerCase() === low);
+      return k ? ce[k] : '';
+    };
+
+    const parts = [];
+    if (isWrongPick) {
+      const wrongExp = findExp(chosen);
+      if (wrongExp) {
+        parts.push(`
+          <div class="rounded-lg bg-rose-950/55 border border-rose-400/45 px-3 py-2 text-xs text-rose-100 leading-relaxed">
+            <span class="font-extrabold text-rose-300">❌ Why "${this.escapeHtml(chosen)}" Is Wrong: </span>${this.escapeHtml(wrongExp)}
+          </div>
+        `);
+      }
+    }
+
+    const ansExp = findExp(ans);
+    if (ansExp) {
+      parts.push(`
+        <div class="rounded-lg bg-emerald-950/55 border border-emerald-400/40 px-3 py-2 text-xs text-emerald-100 leading-relaxed">
+          <span class="font-extrabold text-emerald-300">✅ Why "${this.escapeHtml(ans)}" Is Correct: </span>${this.escapeHtml(ansExp)}
+        </div>
+      `);
+    }
+
+    const others = (card.choices || []).filter(ch => {
+      const c = String(ch || '').trim();
+      if (!c) return false;
+      if (c.toLowerCase() === ans.toLowerCase()) return false;
+      if (isWrongPick && c.toLowerCase() === chosen.toLowerCase()) return false;
+      return !!findExp(c);
+    });
+
+    if (others.length > 0) {
+      parts.push(`
+        <details class="rounded-lg bg-navy-950/75 border border-blue-900/50 px-3 py-2 text-xs">
+          <summary class="cursor-pointer font-bold text-sky-300 select-none">▾ See why the other ${others.length === 1 ? 'choice is' : 'choices are'} wrong (${others.length})</summary>
+          <div class="space-y-1.5 pt-2">
+            ${others.map(ch => `
+              <div class="text-slate-300 leading-relaxed">
+                <span class="font-bold text-slate-100">• ${this.escapeHtml(ch)}:</span> ${this.escapeHtml(findExp(ch))}
+              </div>
+            `).join('')}
+          </div>
+        </details>
+      `);
+    }
+
+    return parts.length ? `<div class="space-y-2 pt-1.5">${parts.join('')}</div>` : '';
+  }
+
+  revealStudyAnswer(chosenAnswer = null) {
     const card = this.currentDeck[this.currentCardIdx];
     this.isAnswerRevealed = true;
     document.getElementById('study-flip-btn-wrap').classList.add('hidden');
     document.getElementById('study-answer-box').classList.remove('hidden');
     document.getElementById('study-answer-text').textContent = card.answer;
-    document.getElementById('study-rationale-text').innerHTML = this.formatRationaleHtml(card);
+    const ceHtml = this.buildChoiceExplanationsHtml(card, chosenAnswer);
+    const ratHtml = this.formatRationaleHtml(card);
+    document.getElementById('study-rationale-text').innerHTML = ceHtml
+      ? `${ceHtml}${card.rationale && card.rationale.trim() ? `<div class="pt-1.5 border-t border-emerald-500/20 mt-1.5">${ratHtml}</div>` : ''}`
+      : ratHtml;
 
     // Unblur any solution images clearly
     document.querySelectorAll('.study-solution-img').forEach(img => {

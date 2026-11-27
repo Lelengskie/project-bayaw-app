@@ -33,7 +33,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       if (accErr) return okRes({ error: accErr.message }, 500);
 
       const nowMs = Date.now();
-      const onlineCount = (accs || []).filter(a => a.last_active_at && (nowMs - a.last_active_at) <= 90 * 1000).length;
+      const onlineCount = (accs || []).filter(a => a.last_active_at && (nowMs - a.last_active_at) <= 180 * 1000).length;
 
       const records = (accs || []).map(a => ({
         id: a.id,
@@ -577,7 +577,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       }
       const now = Date.now();
       const accounts = (data || []).map(acc => {
-        const isOnline = !!(acc.last_active_at && (now - acc.last_active_at) <= 90 * 1000);
+        const isOnline = !!(acc.last_active_at && (now - acc.last_active_at) <= 180 * 1000);
         const daysRemaining = acc.access_expires_at ? Math.max(0, Math.ceil((acc.access_expires_at - now) / (86400 * 1000))) : null;
         return {
           id: acc.id, usernameKey: acc.username_key, name: acc.name,

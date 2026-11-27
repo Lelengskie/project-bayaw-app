@@ -987,6 +987,8 @@
         if (!dbItem) return '';
         const yourAns = d.picked !== undefined ? `${letters[d.picked]}. ${d.choices[d.picked]}` : 'Unanswered';
         const corAns = `${letters[d.correctIdx]}. ${d.choices[d.correctIdx]}`;
+        const pickedTxt = d.picked !== undefined ? d.choices[d.picked] : null;
+        const ceHtml = window.app.buildChoiceExplanationsHtml ? window.app.buildChoiceExplanationsHtml(dbItem, pickedTxt) : '';
         const ratHtml = window.app.formatRationaleHtml ? window.app.formatRationaleHtml(dbItem.rationale || '') : esc(dbItem.rationale || '');
         const imgsHtml = (Array.isArray(dbItem.images) && dbItem.images.length)
           ? `<div class="pt-2 space-y-2">${dbItem.images.map(src => `<img src="${esc(src)}" class="max-h-64 rounded-xl border border-emerald-500/30 bg-white p-1" />`).join('')}</div>`
@@ -1006,9 +1008,10 @@
                 <span class="font-bold">Verified Answer:</span> ${esc(corAns)}
               </div>
             </div>
-            ${(ratHtml || imgsHtml) ? `
-              <div class="rounded-xl bg-navy-900/90 border border-emerald-500/25 p-3 space-y-1">
+            ${(ceHtml || ratHtml || imgsHtml) ? `
+              <div class="rounded-xl bg-navy-900/90 border border-emerald-500/25 p-3 space-y-1.5">
                 <div class="text-[10px] font-black uppercase tracking-wider text-emerald-400">VERIFIED ANSWER & RATIONALE</div>
+                ${ceHtml}
                 ${ratHtml}
                 ${imgsHtml}
               </div>
