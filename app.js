@@ -398,7 +398,7 @@ class AgriBoardApp {
         : 'Owner Access Code (Required for Registration)';
     }
     if (codeHint) {
-      codeHint.textContent = isActive
+      codeHint.innerHTML = isActive
         ? 'Leave blank to claim 5 Days FREE, or enter an Owner Access Code / Master Passcode.'
         : 'Ask the <svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> Owner for an invite code (Owner can enter master passcode here).';
     }
@@ -1058,9 +1058,9 @@ class AgriBoardApp {
       const btn = document.getElementById(id === 0 ? 'lvl-filter-all' : `lvl-filter-${id}`);
       if (!btn) return;
       if (id === areaId) {
-        btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-bold bg-blue-600 text-white';
+        btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-bold bg-emerald-600 text-white';
       } else {
-        btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-semibold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50';
+        btn.className = 'lvl-filter-btn px-2.5 py-1 rounded-md font-semibold bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]';
       }
     });
     this.renderLevelTiles();
@@ -1128,7 +1128,7 @@ class AgriBoardApp {
     if (strip) strip.classList.add('hidden');
     const toggleBtn = document.getElementById('btn-toggle-prob-only');
     if (toggleBtn) {
-      toggleBtn.className = 'px-2.5 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/30 border border-amber-400/50 text-xs font-extrabold text-amber-300 transition-all';
+      toggleBtn.className = 'shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/35 text-xs font-bold text-amber-300 transition-colors';
       toggleBtn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Problem Solving Only (Area 1–3)';
     }
 
@@ -1155,7 +1155,7 @@ class AgriBoardApp {
 
     const toggleBtn = document.getElementById('btn-toggle-prob-only');
     if (toggleBtn) {
-      toggleBtn.className = 'px-2.5 py-1 rounded-full bg-amber-500 text-navy-950 border border-amber-300 text-xs font-black transition-all';
+      toggleBtn.className = 'shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-amber-400 text-navy-950 border border-amber-300 text-xs font-bold transition-colors';
       toggleBtn.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Problem Solving Active (Area ${areaId})`;
     }
 
@@ -1164,8 +1164,8 @@ class AgriBoardApp {
       if (!btn) return;
       const activeColors = { 1: 'bg-sky-600 text-white', 2: 'bg-emerald-600 text-white', 3: 'bg-purple-600 text-white' };
       btn.className = id === areaId
-        ? `px-2.5 py-1 rounded-lg text-xs font-extrabold ${activeColors[id]}`
-        : 'px-2.5 py-1 rounded-lg text-xs font-bold bg-navy-900 text-slate-300 hover:text-white border border-blue-900/50';
+        ? `shrink-0 whitespace-nowrap px-3 min-h-[36px] rounded-lg text-xs font-bold ${activeColors[id]}`
+        : 'shrink-0 whitespace-nowrap px-3 min-h-[36px] rounded-lg text-xs font-semibold bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]';
     });
 
     this.renderLevelTiles();
@@ -1255,7 +1255,7 @@ class AgriBoardApp {
     // Show Anki Re-queue notification banner if this card came back automatically
     const areaPill = document.getElementById('study-area-pill');
     if (this.requeueBannerText) {
-      areaPill.textContent = this.requeueBannerText;
+      areaPill.innerHTML = this.requeueBannerText;
       areaPill.className = 'px-2.5 py-0.5 rounded-md bg-rose-600/35 border border-rose-400/60 text-xs font-extrabold text-rose-200';
       this.requeueBannerText = '';
     } else {
@@ -1289,9 +1289,9 @@ class AgriBoardApp {
       flipWrap.classList.add('hidden');
       const letters = ['A', 'B', 'C', 'D'];
       choicesBox.innerHTML = card.choices.map((ch, idx) => `
-        <button onclick="app.selectStudyMcqChoice(${idx})" id="study-choice-${idx}" class="w-full text-left px-3.5 py-2.5 rounded-xl bg-navy-950/85 hover:bg-navy-800 border border-blue-900/50 hover:border-sky-400/60 transition-all flex items-center gap-3">
+        <button onclick="app.selectStudyMcqChoice(${idx})" id="study-choice-${idx}" class="w-full min-h-[48px] text-left px-3 sm:px-3.5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-emerald-400/50 transition-colors flex items-center gap-3">
           <span class="w-6 h-6 rounded-md bg-navy-800 text-sky-300 font-mono text-xs font-extrabold flex items-center justify-center shrink-0">${letters[idx]}</span>
-          <span class="text-xs sm:text-sm font-medium text-slate-200 flex-1">${this.escapeHtml(ch)}</span>
+          <span class="text-sm font-medium text-slate-200 flex-1">${this.escapeHtml(ch)}</span>
         </button>
       `).join('');
     } else {
@@ -1498,7 +1498,7 @@ class AgriBoardApp {
     const map = document.getElementById('study-item-minimap');
     const startNum = (this.activeStudyLevel - 1) * 100 + 1;
     const endNum = startNum + this.currentDeck.length - 1;
-    document.getElementById('minimap-title').textContent = this.problemSolvingOnly
+    document.getElementById('minimap-title').innerHTML = this.problemSolvingOnly
       ? `<svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Area ${this.activeStudyArea} Problem Solving Minimap (${this.currentDeck.length} Problems)`
       : `<svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> 100-Item Level Minimap (Level ${this.activeStudyLevel}: ${startNum} – ${endNum})`;
 
@@ -1831,7 +1831,7 @@ class AgriBoardApp {
     document.getElementById('pvp-opp-remaining').textContent = `${oppRem} cards left`;
     document.getElementById('pvp-opp-bar').style.width = `${oppPct}%`;
     document.getElementById('pvp-opp-cleared').textContent = this.pvpOpponent.cleared;
-    document.getElementById('pvp-opp-status').textContent = this.pvpOpponent.status;
+    document.getElementById('pvp-opp-status').innerHTML = this.pvpOpponent.status;
     document.getElementById('pvp-opp-lapses').textContent = this.pvpOpponent.lapses;
   }
 
