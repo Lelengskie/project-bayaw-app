@@ -86,7 +86,11 @@
     return String(s || '')
       .toLowerCase()
       .replace(/\([^)]*\)/g, ' ')
-      .replace(/[^a-z0-9]/g, '');
+      .replace(/[\s._,;:'"`]+/g, '');
+  }
+
+  function normQuestionKey(q) {
+    return String(q || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
   function extractLawOrCode(s) {
@@ -99,7 +103,6 @@
     const nb = normChoiceBase(b);
     if (!na || !nb) return true;
     if (na === nb) return true;
-    if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
     const la = extractLawOrCode(a);
     const lb = extractLawOrCode(b);
     if (la && lb && la === lb) return true;
@@ -412,6 +415,15 @@
 
       const selected = [];
       const usedIds = new Set();
+      const usedQKeys = new Set();
+      const tryPick = (it) => {
+        if (!it || usedIds.has(it.id)) return false;
+        const qk = normQuestionKey(it.question);
+        if (qk && usedQKeys.has(qk)) return false;
+        usedIds.add(it.id);
+        if (qk) usedQKeys.add(qk);
+        return true;
+      };
 
       // Prioritize unseen / unmastered items slightly while keeping randomness fresh
       const srs = window.app?.user?.srs || {};
@@ -432,26 +444,17 @@
         const psTarget = Math.min(psPool.length, Math.round(quota * 0.28));
         const pickedHere = [];
 
-        for (let i = 0; i < psTarget && pickedHere.length < quota; i++) {
-          if (!usedIds.has(psPool[i].id)) {
-            usedIds.add(psPool[i].id);
-            pickedHere.push(psPool[i]);
-          }
+        for (let i = 0; i < psPool.length && pickedHere.length < psTarget && pickedHere.length < quota; i++) {
+          if (tryPick(psPool[i])) pickedHere.push(psPool[i]);
         }
         for (const it of regPool) {
           if (pickedHere.length >= quota) break;
-          if (!usedIds.has(it.id)) {
-            usedIds.add(it.id);
-            pickedHere.push(it);
-          }
+          if (tryPick(it)) pickedHere.push(it);
         }
         // Fallback if regPool was smaller than remaining quota
         for (const it of psPool) {
           if (pickedHere.length >= quota) break;
-          if (!usedIds.has(it.id)) {
-            usedIds.add(it.id);
-            pickedHere.push(it);
-          }
+          if (tryPick(it)) pickedHere.push(it);
         }
         selected.push(...pickedHere);
       }
@@ -461,8 +464,7 @@
         const rem = sortFreshFirst(allAreaItems.filter(x => !usedIds.has(x.id)));
         for (const it of rem) {
           if (selected.length >= targetTotal) break;
-          usedIds.add(it.id);
-          selected.push(it);
+          if (tryPick(it)) selected.push(it);
         }
       }
       const finalItems = shuffleArr(selected.slice(0, targetTotal));
@@ -474,41 +476,30 @@
 
       return finalItems.map(it => {
         const ans = String(it.answer || '').trim();
-        let choices = [];
+        const pickedAll = [ans];
+        const canAdd = (txt) => txt && txt.length <= 140 && !pickedAll.some(p => isTooSimilarChoice(p, txt));
+
         if (Array.isArray(it.choices) && it.choices.length >= 2) {
-          const clean = [];
           for (const rawC of it.choices) {
             const c = String(rawC || '').trim();
-            if (c && !clean.some(prev => isTooSimilarChoice(prev, c))) clean.push(c);
+            if (pickedAll.length < 4 && canAdd(c)) pickedAll.push(c);
           }
-          const hasAns = clean.some(c => c.toLowerCase() === ans.toLowerCase());
-          choices = hasAns ? clean.slice(0, 4) : [ans, ...clean.filter(c => !isTooSimilarChoice(c, ans)).slice(0, 3)];
-        } else {
-          // Pick 3 unique, non-equivalent distractors from same subtopic first, then same area
-          const sameSub = shuffleArr(allAreaItems.filter(x => x.id !== it.id && x.subtopic === it.subtopic && x.answer));
-          const wrongs = [];
-          const pickedAll = [ans];
-          const canAdd = (txt) => txt && txt.length <= 140 && !pickedAll.some(p => isTooSimilarChoice(p, txt));
-
-          for (const cand of sameSub) {
-            const txt = String(cand.answer).trim();
-            if (canAdd(txt)) {
-              pickedAll.push(txt);
-              wrongs.push(txt);
-              if (wrongs.length === 3) break;
-            }
-          }
-          if (wrongs.length < 3) {
-            for (const txt of shuffleArr(distractorPool)) {
-              if (canAdd(txt)) {
-                pickedAll.push(txt);
-                wrongs.push(txt);
-                if (wrongs.length === 3) break;
-              }
-            }
-          }
-          choices = [ans, ...wrongs];
         }
+        if (pickedAll.length < 4) {
+          const sameSub = shuffleArr(allAreaItems.filter(x => x.id !== it.id && x.subtopic === it.subtopic && x.answer));
+          for (const cand of sameSub) {
+            if (pickedAll.length >= 4) break;
+            const txt = String(cand.answer).trim();
+            if (canAdd(txt)) pickedAll.push(txt);
+          }
+        }
+        if (pickedAll.length < 4) {
+          for (const txt of shuffleArr(distractorPool)) {
+            if (pickedAll.length >= 4) break;
+            if (canAdd(txt)) pickedAll.push(txt);
+          }
+        }
+        const choices = pickedAll.slice(0, 4);
         const sh = shuffleArr(choices);
         let correctIdx = sh.findIndex(c => c.toLowerCase() === ans.toLowerCase());
         if (correctIdx < 0) correctIdx = 0;
