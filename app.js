@@ -1070,6 +1070,7 @@ class AgriBoardApp {
   setDailyGoal(v) {
     const d = this.dailyState();
     d.goal = Math.max(5, Math.min(500, Number(v) || 50));
+    setTimeout(() => this.renderHome(), 0);
     if (d.count >= d.goal && d.lastHit !== this.localDay()) {
       d.streak = d.lastHit === this.localDay(-1) ? (d.streak || 0) + 1 : 1;
       d.lastHit = this.localDay();
@@ -1080,57 +1081,8 @@ class AgriBoardApp {
   setExamDate(v) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(v || '')) return;
     this.dailyState().examDate = v;
+    setTimeout(() => this.renderHome(), 0);
     this.saveUserState();
-  }
-
-  renderToday() {
-    const el = document.getElementById('today-exam-days');
-    if (!el) return;
-    const d = this.dailyState();
-    const exam = d.examDate || DEFAULT_EXAM_DATE;
-    const [y, m, day] = exam.split('-').map(Number);
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    const days = Math.round((new Date(y, m - 1, day) - start) / 86400000);
-    el.textContent = days >= 0 ? days.toLocaleString() : '—';
-    document.getElementById('today-exam-unit').textContent = days === 1 ? 'day' : days >= 0 ? 'days' : '';
-    const nice = new Date(y, m - 1, day).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-    document.getElementById('today-exam-date').textContent = days < 0 ? 'Set your next exam' : (exam === DEFAULT_EXAM_DATE ? 'Nov 22–23, 2027' : nice);
-    document.getElementById('today-exam-input').value = exam;
-
-    document.getElementById('today-count').textContent = d.count;
-    const sel = document.getElementById('today-goal-select');
-    if (![...sel.options].some(o => Number(o.value) === d.goal)) sel.add(new Option(String(d.goal), String(d.goal)));
-    sel.value = String(d.goal);
-    const bar = document.getElementById('today-bar');
-    bar.style.width = `${Math.min(100, (d.count / d.goal) * 100)}%`;
-
-    // A streak counts while today or yesterday hit the goal
-    const alive = d.lastHit === this.localDay() || d.lastHit === this.localDay(-1);
-    const streak = alive ? (d.streak || 0) : 0;
-    document.getElementById('today-streak').textContent = streak;
-    document.getElementById('today-streak-unit').textContent = streak === 1 ? 'day' : 'days';
-    document.getElementById('today-streak-sub').textContent = d.lastHit === this.localDay()
-      ? 'Done today'
-      : (streak ? `${Math.max(0, d.goal - d.count)} to go` : 'Not started');
-
-    // Official schedule row: only shown for the default (PRC 2027) exam date
-    const sched = document.getElementById('today-schedule');
-    sched.classList.toggle('hidden', exam !== DEFAULT_EXAM_DATE);
-    const until = ymd => { const [a, b, c] = ymd.split('-').map(Number); return Math.round((new Date(a, b - 1, c) - start) / 86400000); };
-    const show = (id, num, unit) => { document.getElementById(id).textContent = num; document.getElementById(id + '-unit').textContent = unit; };
-    const plural = n => (n === 1 ? 'day' : 'days');
-    const fs = until(PRC_SCHEDULE.filingStart), fe = until(PRC_SCHEDULE.filingEnd);
-    if (fs > 0) show('sched-filing', fs.toLocaleString(), `${plural(fs)} to open`);
-    else if (fe > 0) show('sched-filing', fe.toLocaleString(), `${plural(fe)} left`);
-    else if (fe === 0) show('sched-filing', 'Last day', '');
-    else show('sched-filing', 'Closed', '');
-    const ee = until(PRC_SCHEDULE.examEnd);
-    if (days > 0) show('sched-exam', days.toLocaleString(), plural(days));
-    else if (ee >= 0) show('sched-exam', 'Today', '');
-    else show('sched-exam', 'Done', '');
-    const r = until(PRC_SCHEDULE.results);
-    if (r > 0) show('sched-results', r.toLocaleString(), plural(r));
-    else show('sched-results', 'Out', '');
   }
 
   // ==================== HOME DASHBOARD ====================
@@ -1195,6 +1147,10 @@ class AgriBoardApp {
     // Today's goal
     $('home-today').textContent = d.count;
     $('home-goal').textContent = d.goal;
+    const sel = $('home-goal-select');
+    if (![...sel.options].some(o => Number(o.value) === d.goal)) sel.add(new Option(String(d.goal), String(d.goal)));
+    sel.value = String(d.goal);
+    $('home-exam-input').value = exam;
     $('home-ring').style.strokeDashoffset = 213.6 * (1 - Math.min(1, d.count / d.goal));
     const alive = d.lastHit === this.localDay() || d.lastHit === this.localDay(-1);
     const streak = alive ? (d.streak || 0) : 0;
@@ -1291,7 +1247,6 @@ class AgriBoardApp {
   }
 
   updateAllProgressWidgets() {
-    this.renderToday();
     if (!document.getElementById('view-home')?.classList.contains('hidden') && !document.getElementById('view-home')?.classList.contains('home-play')) this.renderHome();
     if (!this.db) return;
     const s1 = this.getAreaStats(1);
@@ -1320,6 +1275,12 @@ class AgriBoardApp {
     document.getElementById('prog-a3-txt').textContent = `${s3.mastered.toLocaleString()} / ${s3.total.toLocaleString()} (${s3.pct.toFixed(0)}%)`;
 
     this.renderFieldPlots();
+    [s1, s2, s3].forEach((s, i) => {
+      const pct = `${Math.round(s.pct)}%`;
+      const t = document.getElementById(`dash-area-pct-${i + 1}`), bar = document.getElementById(`dash-area-bar-${i + 1}`);
+      if (t) t.textContent = pct;
+      if (bar) bar.style.width = s.pct ? `max(2%, ${pct})` : '0%';
+    });
 
     document.getElementById('prog-overall-txt').textContent = `${totalMastered.toLocaleString()} / ${totalItems.toLocaleString()} (${overallPct.toFixed(1)}%)`;
     document.getElementById('prog-overall-bar').style.width = `${overallPct}%`;
