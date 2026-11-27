@@ -32,8 +32,8 @@ self.addEventListener('fetch', e => {
 
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE).then(c => c.put('./', copy));
+      // only the app page is the offline shell; other pages (like /about/) must not replace it
+      if (url.pathname === new URL('./', self.location).pathname) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./', copy)); }
       return res;
     }).catch(() => caches.match('./')));
     return;

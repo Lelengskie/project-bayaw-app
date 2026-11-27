@@ -349,6 +349,7 @@
       <button onclick="app.openSubmitReviewerModal()" class="nav-item"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Submit Reviewer (.docx)</button>
       <button onclick="app.openFeedbackModal()" class="nav-item"><svg class="ic" aria-hidden="true"><use href="#i-lightbulb"/></svg> Feedback / Suggest</button>
       <button onclick="document.getElementById('about-dialog').showModal()" class="nav-item"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg> About &amp; Sources</button>
+      <a href="./about/" class="nav-item"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> About the Creator</a>
       <button onclick="toggleTheme()" class="nav-item"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg> <span class="dark:hidden">Dark mode</span><span class="hidden dark:inline">Light mode</span></button>
       <button onclick="app.installApp()" class="install-app-btn nav-item hidden"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Install App</button>
 
@@ -1539,6 +1540,7 @@
         <button onclick="app.closeMoreSheet(); app.openSubmitReviewerModal()" class="sheet-item"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Submit .docx</button>
         <button onclick="app.closeMoreSheet(); app.openFeedbackModal()" class="sheet-item"><svg class="ic" aria-hidden="true"><use href="#i-lightbulb"/></svg> Feedback</button>
         <button onclick="app.closeMoreSheet(); document.getElementById('about-dialog').showModal()" class="sheet-item"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg> About</button>
+        <a href="./about/" class="sheet-item"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Creator</a>
         <button onclick="toggleTheme()" class="sheet-item"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg> <span class="dark:hidden">Dark mode</span><span class="hidden dark:inline">Light mode</span></button>
         <button onclick="app.closeMoreSheet(); app.installApp()" class="install-app-btn sheet-item hidden !text-emerald-200"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Install App</button>
       </div>
@@ -1580,7 +1582,8 @@
           <p class="text-slate-300 leading-relaxed">Your progress is saved on this device and synced to your account so you can continue on another phone or PC.</p>
         </div>
       </div>
-      <p class="text-xs text-slate-500 border-t border-white/10 pt-3">Independent study tool. Not affiliated with or endorsed by the Professional Regulation Commission (PRC).</p>
+      <p class="text-sm text-slate-300 border-t border-white/10 pt-3">Built by <strong class="text-white">Bryan Lester B. Tapec, RABE</strong>. <a href="./about/" class="text-emerald-300 underline underline-offset-2">Meet the creator</a> for partnerships with review centers and schools.</p>
+      <p class="text-xs text-slate-500">Independent study tool. Not affiliated with or endorsed by the Professional Regulation Commission (PRC).</p>
     </div>
   </dialog>
 
