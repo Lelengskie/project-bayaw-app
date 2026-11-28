@@ -928,6 +928,7 @@ class AgriBoardApp {
       this.populateLobbyLevels();
     }
     this.showView('pvp-lobby');
+    this.renderPvpLobby();
     this.loadWaitingPvpRooms();
   }
 
@@ -942,13 +943,47 @@ class AgriBoardApp {
     for (let lvl = 1; lvl <= regLevels; lvl++) {
       const start = (lvl - 1) * 100 + 1;
       const end = Math.min(lvl * 100, regItems.length);
-      opts += `<option value="${lvl}">Area ${areaId} – Level ${lvl} (${start} – ${end})</option>`;
+      opts += `<option value="${lvl}">Level ${lvl} · cards ${start}–${end}</option>`;
     }
     const ps = this.getPsItems(areaId);
     if (ps.length > 0) {
-      opts += `<option value="ps">🧮 Area-${areaId} Level (PS) — ${ps.length} Problems</option>`;
+      opts += `<option value="ps">Problem solving · ${ps.length} problems</option>`;
     }
+    const keep = lvlSel.value;
     lvlSel.innerHTML = opts;
+    if ([...lvlSel.options].some(o => o.value === keep)) lvlSel.value = keep;
+    this.renderPvpLobby();
+  }
+
+  setPvpOpt(kind, val) {
+    const sel = document.getElementById(kind === 'area' ? 'lobby-pvp-area' : 'quick-pvp-size');
+    if (!sel) return;
+    sel.value = String(val);
+    if (kind === 'area') this.populateLobbyLevels(); else this.renderPvpLobby();
+  }
+
+  pvpLevelLabel(areaId, levelVal) {
+    return `Area ${areaId} · ${levelVal === 'ps' ? 'Problems' : `Level ${levelVal}`}`;
+  }
+
+  // Lobby header, setup buttons and summary; all from data already on the device
+  renderPvpLobby() {
+    const $ = (id) => document.getElementById(id);
+    if (!$('lobby-pvp-area')) return;
+    const area = $('lobby-pvp-area').value, size = $('quick-pvp-size').value, lvl = $('lobby-pvp-level').value;
+    document.querySelectorAll('[data-pvp-area]').forEach(b => { const on = b.dataset.pvpArea === area; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    document.querySelectorAll('[data-pvp-size]').forEach(b => { const on = b.dataset.pvpSize === size; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    const par = Number(size) * 5;  // same par as the RP bonus in finishPvpMatch
+    $('pvl-summary').innerHTML = `<b class="font-semibold">${this.pvpLevelLabel(area, lvl)} · ${size} cards</b> <span class="text-slate-400">· par time ${Math.floor(par / 60)}:${String(par % 60).padStart(2, '0')}</span>`;
+    const u = this.user || {};
+    const rp = (u.rp || 1200).toLocaleString();
+    $('pvl-rp').textContent = rp;
+    $('pvl-you-rp').textContent = `${rp} RP`;
+    $('pvl-wl').innerHTML = `${u.pvpWins || 0}<span class="text-slate-400 text-sm"> – ${u.pvpLosses || 0}</span>`;
+    $('pvl-best').innerHTML = u.bestTimeSec ? `${u.bestTimeSec}<span class="text-slate-400 text-sm">s</span>` : '–';
+    const initials = (u.loggedIn && u.name ? u.name.replace(/^Engr\.?\s*/i, '').split(/\s+/).map(w => w[0]).join('').slice(0, 2) : 'YOU').toUpperCase();
+    $('pvl-you-av').textContent = initials;
+    if (this.pvpRooms) this.renderPvpRooms();
   }
 
   scrollToStudySession() {
@@ -1903,31 +1938,36 @@ class AgriBoardApp {
   }
 
   async loadWaitingPvpRooms() {
-    const listEl = document.getElementById('pvp-waiting-list');
-    if (!listEl) return;
+    if (!document.getElementById('pvp-waiting-list')) return;
     try {
       const res = await this.apiCall('POST', { action: 'pvp_list_waiting' });
       const data = await res.json();
-      const rooms = (data.waiting || []).filter(r => r.p1_name !== this.user.name);
-      if (rooms.length === 0) {
-        listEl.innerHTML = `<div class="text-slate-400 text-xs">No other reviewees waiting right now. Click <strong>Find Match</strong> above to open a room!</div>`;
-        return;
-      }
-      listEl.innerHTML = rooms.map(r => {
-        const lvlTxt = r.level_val === 'ps' ? `Area-${r.area_id} Level (PS)` : `Area ${r.area_id} • Level ${r.level_val}`;
-        return `
-          <div class="flex items-center justify-between gap-2 bg-navy-900/90 border border-purple-500/35 rounded-lg px-3 py-2">
-            <div>
-              <div class="text-xs font-bold text-white">${this.escapeHtml(r.p1_name)} <span class="text-xs font-mono text-amber-300">(${r.p1_rp || 1200} RP)</span></div>
-              <div class="text-xs text-sky-300">${lvlTxt} • ${r.deck_size} Cards</div>
-            </div>
-            <button onclick="app.joinWaitingPvpRoom(${r.area_id}, '${r.level_val}', ${r.deck_size})" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-on-accent text-xs font-extrabold">
-              <svg class="ic" aria-hidden="true"><use href="#i-swords"/></svg> Accept Duel
-            </button>
-          </div>
-        `;
-      }).join('');
+      this.pvpRooms = (data.waiting || []).filter(r => r.p1_name !== this.user.name);
+      this.renderPvpRooms();
     } catch (e) {}
+  }
+
+  renderPvpRooms() {
+    const listEl = document.getElementById('pvp-waiting-list');
+    if (!listEl) return;
+    const rooms = this.pvpRooms || [];
+    if (!rooms.length) {
+      listEl.innerHTML = `<div class="pvl-empty"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><div>No one is waiting right now.</div><div class="text-[12.5px]">Tap Find match to open a room. Others will see it here.</div></div>`;
+      return;
+    }
+    const v = (id) => document.getElementById(id)?.value;
+    listEl.innerHTML = rooms.map(r => {
+      const name = String(r.p1_name || 'Reviewee');
+      const ini = this.escapeHtml(name.replace(/^Engr\.?\s*/i, '').replace(/[^\p{L}\p{N}\s]/gu, '').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase());
+      const label = `${this.pvpLevelLabel(r.area_id, String(r.level_val))} · ${r.deck_size} cards`;
+      const match = String(r.area_id) === v('lobby-pvp-area') && String(r.level_val) === v('lobby-pvp-level') && String(r.deck_size) === v('quick-pvp-size');
+      const btn = match ? 'bg-emerald-600 hover:bg-emerald-700 text-on-accent border-transparent' : 'border-rule bg-surface hover:border-emerald-500';
+      return `<div class="pvl-room">
+          <div class="pvl-av sm" aria-hidden="true">${ini}</div>
+          <div class="min-w-0"><b class="font-semibold text-sm">${this.escapeHtml(name)}</b> <span class="font-mono text-xs text-slate-400">${(r.p1_rp || 1200).toLocaleString()} RP</span><div class="text-[12.5px] text-slate-400">${label}</div></div>
+          <button onclick="app.joinWaitingPvpRoom(${Number(r.area_id)}, '${this.escapeHtml(String(r.level_val))}', ${Number(r.deck_size)})" aria-label="Accept duel with ${this.escapeHtml(name)}, ${label}" class="inline-flex items-center gap-1.5 px-3 min-h-[38px] rounded-[10px] border text-[13px] font-semibold ${btn}"><svg class="ic" aria-hidden="true"><use href="#i-swords"/></svg><span class="pvl-acc">Accept</span></button>
+        </div>`;
+    }).join('');
   }
 
   joinWaitingPvpRoom(areaId, levelVal, deckSize) {
@@ -1955,8 +1995,7 @@ class AgriBoardApp {
 
     document.getElementById('pvp-lobby-settings').classList.add('hidden');
     document.getElementById('pvp-searching-box').classList.remove('hidden');
-    const lvlLabel = levelVal === 'ps' ? `Area-${areaId} Level (PS)` : `Area ${areaId} • Level ${levelVal}`;
-    document.getElementById('pvp-search-desc').textContent = `Looking for a real reviewee in ${lvlLabel} (${deckSize} Cards)...`;
+    document.getElementById('pvp-search-desc').innerHTML = `Waiting for a reviewee on <b class="font-semibold text-white">${this.pvpLevelLabel(areaId, levelVal)} · ${deckSize} cards</b>. Others in the lobby can see your room.`;
 
     // Start live "Finding Match" stopwatch timer
     this.pvpSearching = true;
