@@ -213,12 +213,94 @@ class AgriBoardApp {
       document.getElementById('admin-login-box').classList.add('hidden');
       document.getElementById('admin-tools-body').classList.remove('hidden');
       document.getElementById('btn-admin-logout').classList.remove('hidden');
+      this.adminTab(this.owTab || 'people');
       this.refreshAdminUsers();
     } else {
       document.getElementById('admin-login-box').classList.remove('hidden');
       document.getElementById('admin-tools-body').classList.add('hidden');
       document.getElementById('btn-admin-logout').classList.add('hidden');
     }
+  }
+
+  // ---- Owner console: tabs, toast and in-page confirm (replace browser alert/confirm/prompt here)
+  adminTab(name, peopleFilter) {
+    this.owTab = name;
+    if (peopleFilter) { this.owPeople = peopleFilter; this.renderAdminAccounts(); }
+    document.querySelectorAll('[data-ow-tab]').forEach(b => { const on = b.dataset.owTab === name; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    document.querySelectorAll('[data-ow-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.owPane !== name));
+  }
+
+  owToast(msg) {
+    document.getElementById('ow-toast')?.remove();
+    const el = document.createElement('div');
+    el.id = 'ow-toast'; el.className = 'ow-toast'; el.setAttribute('role', 'status');
+    el.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span></span>`;
+    el.querySelector('span').textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  // Resolves to true / the typed or picked value, or null when cancelled
+  owAsk({ title, body = '', ok = 'Confirm', danger = false, input = null, options = null }) {
+    return new Promise(resolve => {
+      document.getElementById('ow-ask')?.remove();
+      const wrap = document.createElement('div');
+      wrap.id = 'ow-ask'; wrap.className = 'ow-ask';
+      wrap.innerHTML = `<div class="ow-ask-card panel" role="dialog" aria-modal="true" aria-labelledby="ow-ask-t">
+        <h2 id="ow-ask-t" class="font-serif !font-normal text-[22px] leading-tight"></h2>
+        <p class="text-sm text-slate-400 mt-1.5"></p>
+        ${input ? `<input class="ow-field mt-3" type="${input.type || 'text'}" autocomplete="off" />` : ''}
+        ${options ? `<select class="ow-field mt-3">${options.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select>` : ''}
+        <div class="ow-ask-err hidden text-[13px] text-rose-400 mt-2"></div>
+        <div class="flex justify-end gap-2 mt-4"><button class="ow-btn" data-a="no">Cancel</button><button class="ow-btn ${danger ? 'danger solid' : 'primary'}" data-a="ok"></button></div>
+      </div>`;
+      wrap.querySelector('h2').textContent = title;
+      wrap.querySelector('p').textContent = body;
+      wrap.querySelector('[data-a=ok]').textContent = ok;
+      const field = wrap.querySelector('input, select');
+      if (field && input?.value) field.value = input.value;
+      if (field && options?.value) field.value = options.value;
+      const done = (v) => { wrap.remove(); document.removeEventListener('keydown', key); resolve(v); };
+      const submit = () => {
+        if (!field) return done(true);
+        const v = field.value.trim();
+        if (input?.min && v.length < input.min) { const e = wrap.querySelector('.ow-ask-err'); e.textContent = `Use at least ${input.min} characters.`; e.classList.remove('hidden'); return; }
+        done(v);
+      };
+      const key = (e) => { if (e.key === 'Escape') done(null); if (e.key === 'Enter' && field) submit(); };
+      document.addEventListener('keydown', key);
+      wrap.addEventListener('click', e => { if (e.target === wrap || e.target.dataset.a === 'no') done(null); if (e.target.dataset.a === 'ok') submit(); });
+      document.body.appendChild(wrap);
+      (field || wrap.querySelector('[data-a=ok]')).focus();
+    });
+  }
+
+  owCopy(text, msg) {
+    navigator.clipboard?.writeText(text);
+    this.owToast(msg || `Copied ${text}`);
+  }
+
+  owMenu(btn) {
+    const menu = btn.nextElementSibling;
+    const open = menu.classList.contains('hidden');
+    document.querySelectorAll('.ow-menu').forEach(m => m.classList.add('hidden'));
+    if (open) {
+      menu.classList.remove('hidden');
+      const close = (e) => { if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) { menu.classList.add('hidden'); document.removeEventListener('click', close); } };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    }
+  }
+
+  owStats() {
+    const $ = (id) => document.getElementById(id);
+    const a = this.owAccts || [];
+    const expiring = a.filter(x => x.accessExpiresAt && x.daysRemaining > 0 && x.daysRemaining <= 3).length;
+    if ($('ow-online')) $('ow-online').textContent = a.filter(x => x.isOnline).length;
+    if ($('ow-accounts')) $('ow-accounts').textContent = (this.owTotal ?? a.length).toLocaleString();
+    if ($('ow-accounts-sub')) $('ow-accounts-sub').textContent = expiring ? `accounts · ${expiring} expiring` : 'accounts';
+    const n = (this.owFeedback || []).length;
+    if ($('ow-inbox')) $('ow-inbox').textContent = n;
+    if ($('ow-tab-n')) { $('ow-tab-n').textContent = n; $('ow-tab-n').classList.toggle('hidden', !n); }
   }
 
   async adminSignIn() {
@@ -273,9 +355,9 @@ class AgriBoardApp {
       if (lblInput) lblInput.value = '';
       navigator.clipboard?.writeText(data.code);
       await this.loadAdminAccessCodes();
-      alert(`✅ Generated & Copied Access Code: ${data.code}\nDuration: ${data.durationLabel} • Max uses: ${data.maxUses}`);
+      this.owToast(`Made and copied ${data.code} · ${data.durationLabel} · ${data.maxUses} ${data.maxUses === 1 ? 'person' : 'people'}`);
     } else {
-      alert(data.error || 'Could not generate Access Code.');
+      this.owToast(data.error || 'Could not make the access code.');
     }
   }
 
@@ -285,107 +367,101 @@ class AgriBoardApp {
     try {
       const res = await this.apiCall('POST', { action: 'admin_list_access_codes' });
       const data = await res.json();
-      if (!res.ok || !Array.isArray(data.codes) || data.codes.length === 0) {
-        container.innerHTML = `<div class="text-xs text-slate-400">No access codes generated yet. Click "+ Generate Code" above!</div>`;
+      this.owCodes = res.ok && Array.isArray(data.codes) ? data.codes : [];
+      if (!this.owCodes.length) {
+        container.innerHTML = `<div class="ow-empty">No access codes yet. Make one above.</div>`;
         return;
       }
-      container.innerHTML = data.codes.map(c => `
-        <div class="flex flex-wrap items-center justify-between gap-2 bg-navy-950 border border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="font-mono font-black text-emerald-300 tracking-wider">${this.escapeHtml(c.code)}</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold">${this.escapeHtml(c.durationLabel || 'Unlimited')}</span>
-            ${c.label ? `<span class="text-xs px-2 py-0.5 rounded bg-navy-800 text-slate-300">${this.escapeHtml(c.label)}</span>` : ''}
-            <span class="text-xs font-mono ${c.uses >= c.maxUses ? 'text-rose-400' : 'text-sky-300'}">${c.uses} / ${c.maxUses} used</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <button onclick="navigator.clipboard?.writeText('${c.code}'); alert('Copied: ${c.code}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-xs font-bold">📋 Copy</button>
-            <button onclick="app.adminDeleteAccessCode('${c.code}')" class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-bold">Delete</button>
-          </div>
-        </div>
-      `).join('');
+      const esc = (x) => this.escapeHtml(x);
+      container.innerHTML = this.owCodes.map((c, i) => {
+        const full = c.uses >= c.maxUses;
+        return `<div class="ow-row">
+          <div class="min-w-0"><span class="ow-code">${esc(c.code)}</span>
+            <div class="ow-meta flex flex-wrap items-center gap-2 mt-1"><span class="ow-tag gold">${esc(c.durationLabel || 'Unlimited')}</span>${c.label ? `<span>${esc(c.label)}</span>` : ''}<span class="ow-meter ${full ? 'full' : ''}"><i style="width:${Math.min(100, c.uses / Math.max(1, c.maxUses) * 100)}%"></i></span><span class="font-mono text-xs" ${full ? 'style="color:rgb(var(--c-rust-400))"' : ''}>${c.uses} / ${c.maxUses} used${full ? ' · full' : ''}</span></div></div>
+          <div class="flex gap-1.5"><button onclick="app.owCopy(app.owCodes[${i}].code)" class="ow-btn sm"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button><button onclick="app.adminDeleteAccessCode(app.owCodes[${i}].code)" aria-label="Delete code ${esc(c.code)}" class="ow-btn sm danger"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg></button></div>
+        </div>`;
+      }).join('');
     } catch (e) {}
   }
 
   async loadAdminAccounts() {
-    const tbody = document.getElementById('admin-accounts-tbody');
-    const pill = document.getElementById('admin-online-pill');
-    if (!tbody || !this.adminPasscode) return;
+    if (!document.getElementById('admin-accounts-tbody') || !this.adminPasscode) return;
     try {
       const res = await this.apiCall('POST', { action: 'admin_list_accounts' });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.accounts)) return;
-
-      if (pill) pill.textContent = `${data.onlineCount || 0} Online Now • ${data.totalAccounts || 0} Total`;
-      if (data.accounts.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400">No registered accounts yet.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = data.accounts.map(acc => {
-        const statusDot = acc.isOnline
-          ? `<span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online</span>`
-          : `<span class="inline-flex items-center gap-1 text-xs text-slate-500"><span class="w-2 h-2 rounded-full bg-slate-600"></span> Offline</span>`;
-
-        let daysBadge = `<span class="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-infinity"/></svg> Unlimited</span>`;
-        if (acc.accessExpiresAt) {
-          if (acc.daysRemaining <= 0) {
-            daysBadge = `<span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-400/50 text-rose-300 font-bold text-xs">Expired (0d)</span>`;
-          } else {
-            daysBadge = `<span class="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs">${acc.daysRemaining}d left (${this.escapeHtml(acc.accessDurationLabel)})</span>`;
-          }
-        }
-
-        const revokedTag = acc.revoked
-          ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-rose-600 text-on-accent font-black text-xs uppercase">REVOKED</span>`
-          : '';
-        const revSentBadge = (acc.reviewersSent || 0) > 0
-          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/25 border border-indigo-400/50 text-indigo-200 font-bold text-xs" title="Reviewers contributed"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg> ${acc.reviewersSent} sent</span>`
-          : '';
-        const mockBadge = acc.fullMockAccess && !acc.isOwner
-          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/25 border border-emerald-400/50 text-emerald-200 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Full Mock</span>`
-          : '';
-
-        const actionBtn = acc.isOwner
-          ? `<span class="text-xs text-amber-300 font-bold"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> Owner Protected</span>`
-          : `<div class="inline-flex flex-wrap items-center justify-end gap-1.5">
-              ${acc.fullMockAccess
-                ? `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-rose-600/40 border border-emerald-400/60 text-emerald-200 text-xs font-bold" title="Click to revoke Full Mock access"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Mock ON</button>`
-                : `<button onclick="app.adminToggleFullMock('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-navy-800 hover:bg-emerald-600/35 border border-slate-600 hover:border-emerald-400 text-slate-300 hover:text-emerald-200 text-xs font-bold" title="Grant Full 100-Item Mock access"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Grant Mock</button>`}
-              <select id="renew-sel-${acc.usernameKey}" class="bg-navy-950 border border-sky-500/40 rounded-lg px-2 py-1 text-xs font-bold text-sky-300">
-                <option value="1d">+1 Day</option>
-                <option value="3d">+3 Days</option>
-                <option value="7d" selected>+1 Week</option>
-                <option value="14d">+2 Weeks</option>
-                <option value="30d">+1 Month</option>
-                <option value="90d">+3 Months</option>
-                <option value="unli">♾️ Unli</option>
-              </select>
-              <button onclick="app.adminRenewAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-sky-600/25 hover:bg-sky-600/45 border border-sky-400/50 text-sky-200 text-xs font-bold">Renew</button>
-              <button onclick="app.adminResetUserPassword('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-amber-600/25 hover:bg-amber-600/45 border border-amber-400/50 text-amber-200 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-key-round"/></svg> Reset PW</button>
-              ${acc.revoked
-                ? `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', false, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-xs font-bold">Restore</button>`
-                : `<button onclick="app.adminToggleRevokeAccount('${acc.usernameKey}', true, '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-600/25 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-xs font-bold">Revoke</button>`}
-              <button onclick="app.adminRemoveAccount('${acc.usernameKey}', '${this.escapeHtml(acc.name)}')" class="px-2.5 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-700 border border-rose-500/60 text-rose-100 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg> Remove</button>
-            </div>`;
-
-        return `
-          <tr>
-            <td class="py-2.5">
-              <div class="flex items-center flex-wrap gap-1.5">
-                ${statusDot}
-                <span class="font-bold text-white">${this.escapeHtml(acc.name)}</span>
-                ${mockBadge}
-                ${revSentBadge}
-                ${revokedTag}
-              </div>
-            </td>
-            <td class="py-2.5 font-mono text-xs text-sky-300">${this.escapeHtml(acc.accessCodeUsed)}</td>
-            <td class="py-2.5 text-center">${daysBadge}</td>
-            <td class="py-2.5 text-right">${actionBtn}</td>
-          </tr>
-        `;
-      }).join('');
+      this.owAccts = data.accounts;
+      this.owTotal = data.totalAccounts ?? data.accounts.length;
+      this.renderAdminAccounts();
     } catch (e) {}
+  }
+
+  renderAdminAccounts() {
+    const box = document.getElementById('admin-accounts-tbody');
+    if (!box) return;
+    const esc = (x) => this.escapeHtml(x);
+    const all = this.owAccts || [];
+    const f = this.owPeople || 'all';
+    const tests = {
+      all: () => true,
+      online: a => a.isOnline,
+      expiring: a => a.accessExpiresAt && a.daysRemaining > 0 && a.daysRemaining <= 3,
+      expired: a => a.accessExpiresAt && a.daysRemaining <= 0,
+      revoked: a => a.revoked,
+    };
+    const names = { all: 'All', online: 'Online', expiring: 'Expiring', expired: 'Expired', revoked: 'Revoked' };
+    document.getElementById('ow-people-chips').innerHTML = Object.keys(tests).map(k => {
+      const n = all.filter(tests[k]).length;
+      return (k === 'all' || n) ? `<button class="ow-chip ${f === k ? 'on' : ''}" aria-pressed="${f === k}" onclick="app.owPeople='${k}'; app.renderAdminAccounts()">${names[k]} ${n}</button>` : '';
+    }).join('');
+    this.owStats();
+    const q = (document.getElementById('ow-people-q')?.value || '').trim().toLowerCase();
+    const list = all.map((a, i) => [a, i]).filter(([a]) => tests[f](a) && (!q || `${a.name} ${a.accessCodeUsed}`.toLowerCase().includes(q)));
+    if (!list.length) {
+      box.innerHTML = `<div class="ow-empty">${all.length ? 'No accounts match.' : 'No registered accounts yet.'}</div>`;
+      return;
+    }
+    box.innerHTML = list.map(([a, i]) => {
+      let plan = `<span class="ow-tag green">Unlimited</span>`;
+      if (a.isOwner) plan = `<span class="ow-tag gold">Owner</span>`;
+      else if (a.accessExpiresAt) plan = a.daysRemaining <= 0 ? `<span class="ow-tag rust">Expired</span>` : `<span class="ow-tag ${a.daysRemaining <= 3 ? 'rust' : 'gold'}">${a.daysRemaining}d left</span>`;
+      const tags = [
+        a.isOwner ? `<span class="ow-tag gold"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg>Owner</span>` : '',
+        a.fullMockAccess && !a.isOwner ? `<span class="ow-tag green"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg>Full mock</span>` : '',
+        (a.reviewersSent || 0) > 0 ? `<span class="ow-tag plum"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg>${a.reviewersSent} file${a.reviewersSent === 1 ? '' : 's'}</span>` : '',
+        a.revoked ? `<span class="ow-tag rust">Revoked</span>` : '',
+      ].join('');
+      const actions = a.isOwner
+        ? `<span class="ow-prot"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg>Owner account, protected</span>`
+        : `<span class="ow-extend"><select id="renew-sel-${i}" aria-label="Extend ${esc(a.name)} by"><option value="1d">+1 day</option><option value="3d">+3 days</option><option value="7d" selected>+1 week</option><option value="14d">+2 weeks</option><option value="30d">+1 month</option><option value="90d">+3 months</option><option value="unli">Unlimited</option></select><button onclick="app.adminAcct(${i}, 'renew')">Extend</button></span>
+          <span class="relative"><button onclick="app.owMenu(this)" aria-label="More actions for ${esc(a.name)}" aria-haspopup="menu" class="ow-btn sm !w-9 !px-0"><svg class="ic" aria-hidden="true"><use href="#i-ellipsis-vertical"/></svg></button>
+            <span class="ow-menu hidden" role="menu">
+              <button role="menuitem" onclick="app.adminAcct(${i}, 'mock')"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg>${a.fullMockAccess ? 'Remove full mock exam' : 'Give full mock exam'}</button>
+              <button role="menuitem" onclick="app.adminAcct(${i}, 'password')"><svg class="ic" aria-hidden="true"><use href="#i-key-round"/></svg>Reset password</button>
+              <hr>
+              <button role="menuitem" class="danger" onclick="app.adminAcct(${i}, 'revoke')"><svg class="ic" aria-hidden="true"><use href="#i-ban"/></svg>${a.revoked ? 'Restore access' : 'Revoke access'}</button>
+              <button role="menuitem" class="danger" onclick="app.adminAcct(${i}, 'remove')"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg>Remove account</button>
+            </span></span>`;
+      return `<div class="ow-acct">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-1.5"><span class="ow-dot ${a.isOnline ? '' : 'off'}" title="${a.isOnline ? 'Online' : 'Offline'}"></span><b class="font-semibold text-[15px]">${esc(a.name)}</b>${tags}</div>
+          <div class="ow-meta mt-0.5">Code <span class="font-mono text-xs">${esc(a.accessCodeUsed || '–')}</span> · ${plan}${a.isOnline ? ' · online now' : ''}</div>
+        </div>
+        <div class="ow-acct-act">${actions}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Row actions look the account up by index, so names with quotes can't break the buttons
+  adminAcct(i, act) {
+    const a = (this.owAccts || [])[i];
+    if (!a) return;
+    document.querySelectorAll('.ow-menu').forEach(m => m.classList.add('hidden'));
+    if (act === 'renew') return this.adminRenewAccount(a.usernameKey, a.name, document.getElementById(`renew-sel-${i}`));
+    if (act === 'mock') return this.adminToggleFullMock(a.usernameKey, !a.fullMockAccess, a.name);
+    if (act === 'password') return this.adminResetUserPassword(a.usernameKey, a.name);
+    if (act === 'revoke') return this.adminToggleRevokeAccount(a.usernameKey, !a.revoked, a.name);
+    if (act === 'remove') return this.adminRemoveAccount(a.usernameKey, a.name);
   }
 
   updatePromoUI() {
@@ -419,16 +495,14 @@ class AgriBoardApp {
         : 'Ask the owner for an invite code.';
     }
 
-    // Update Admin Promo Pill
+    // Owner console promo card
     const adminPill = document.getElementById('admin-promo-status-pill');
     if (adminPill) {
-      if (isActive) {
-        adminPill.textContent = `🟢 ACTIVE (${hrsLeft}h left • ${p.trialDays || 5}d Free)`;
-        adminPill.className = 'px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-black text-emerald-300';
-      } else {
-        adminPill.textContent = '🔒 ENDED (Access Code Required)';
-        adminPill.className = 'px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-xs font-black text-rose-300';
-      }
+      adminPill.textContent = isActive ? `On · ${hrsLeft}h left` : 'Off';
+      adminPill.className = `ow-tag ${isActive ? 'green' : 'gray'}`;
+      const start = document.getElementById('ow-promo-start'), stop = document.getElementById('ow-promo-stop');
+      if (start) start.lastChild.textContent = isActive ? 'Restart 48-hour promo' : 'Start 48-hour promo';
+      if (stop) stop.disabled = !isActive;
     }
   }
 
@@ -438,116 +512,107 @@ class AgriBoardApp {
     if (res.ok && data.promo) {
       this.promoState = data.promo;
       this.updatePromoUI();
-      alert(enabled ? `🎉 48-Hour Launch Promo STARTED! New sign-ups get ${trialDays} Days FREE.` : '🔒 Launch Promo STOPPED. Access Code is now required for all new sign-ups.');
+      this.owToast(enabled ? `Promo started. New sign-ups get ${trialDays} days free for 48 hours.` : 'Promo stopped. New sign-ups need an access code again.');
     }
   }
 
-  async adminRenewAccount(usernameKey, displayName) {
-    const sel = document.getElementById(`renew-sel-${usernameKey}`);
+  async adminRenewAccount(usernameKey, displayName, sel) {
     const duration = sel ? sel.value : '7d';
     const labelText = sel ? sel.options[sel.selectedIndex].text : duration;
-    if (!confirm(`Renew / extend ${displayName}'s access by ${labelText}?`)) return;
+    if (!await this.owAsk({ title: `Extend ${displayName}?`, body: `Adds ${labelText.replace('+', '')} of access.`, ok: 'Extend' })) return;
     const res = await this.apiCall('POST', { action: 'admin_renew_account', usernameKey, duration });
     if (res.ok) {
       await this.loadAdminAccounts();
-      alert(`✅ Renewed ${displayName}'s access (${labelText})!`);
+      this.owToast(`Extended ${displayName} (${labelText})`);
     } else {
-      alert('Could not renew account.');
+      this.owToast('Could not extend that account.');
     }
   }
 
   async adminResetUserPassword(usernameKey, displayName) {
-    const newPassword = prompt(`Enter a new temporary password for ${displayName} (at least 6 characters). Their progress will be kept safe:`);
-    if (newPassword === null) return;
-    if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters.');
-      return;
-    }
+    const newPassword = await this.owAsk({ title: `New password for ${displayName}`, body: 'Type a temporary password, at least 6 characters. Their progress stays safe. It is copied after saving so you can send it to them.', ok: 'Save password', input: { type: 'text', min: 6 } });
+    if (!newPassword) return;
     const res = await this.apiCall('POST', { action: 'admin_reset_password', usernameKey, newPassword });
-    if (res.ok) {
-      alert(`✅ Password updated for ${displayName}! You can now send them their new password: ${newPassword}`);
-    } else {
-      alert('Could not reset password.');
-    }
+    if (res.ok) this.owCopy(newPassword, `Password updated for ${displayName}. New password copied.`);
+    else this.owToast('Could not reset the password.');
   }
 
   async adminRemoveAccount(usernameKey, displayName) {
-    if (!confirm(`PERMANENTLY DELETE ${displayName}'s account? Their username will become available to re-register.`)) return;
+    if (!await this.owAsk({ title: `Remove ${displayName}'s account?`, body: 'This deletes the account for good. The username becomes free to register again.', ok: 'Remove account', danger: true })) return;
     const res = await this.apiCall('POST', { action: 'admin_delete_user', usernameKey });
     if (res.ok) {
       await this.refreshAdminUsers();
-      alert(`🗑️ Removed account "${displayName}". They can now create a fresh account with that username!`);
-    }
+      this.owToast(`Removed ${displayName}'s account`);
+    } else this.owToast('Could not remove that account.');
   }
 
   async adminToggleRevokeAccount(usernameKey, revoke, displayName) {
-    const verb = revoke ? 'REVOKE' : 'RESTORE';
-    if (!confirm(`${verb} access for ${displayName}?`)) return;
+    if (!await this.owAsk({ title: `${revoke ? 'Revoke' : 'Restore'} access for ${displayName}?`, body: revoke ? 'They will not be able to use the reviewer until you restore it.' : 'They can use the reviewer again right away.', ok: revoke ? 'Revoke access' : 'Restore access', danger: revoke })) return;
     await this.apiCall('POST', { action: 'admin_revoke_account', usernameKey, revoke });
     await this.loadAdminAccounts();
+    this.owToast(`${revoke ? 'Revoked' : 'Restored'} access for ${displayName}`);
   }
 
   async adminToggleFullMock(usernameKey, granted, displayName) {
-    const verb = granted ? 'GRANT Full 100-Item PRC Mock Exam access to' : 'REVOKE Full Mock Exam access from';
-    if (!confirm(`${verb} ${displayName}?`)) return;
+    if (!await this.owAsk({ title: `${granted ? 'Give' : 'Remove'} the full mock exam${granted ? ' to' : ' from'} ${displayName}?`, body: 'This is the full 100-item PRC-style board mock.', ok: granted ? 'Give access' : 'Remove access', danger: !granted })) return;
     const res = await this.apiCall('POST', { action: 'admin_set_full_mock', usernameKey, granted });
     if (res.ok) {
       await this.loadAdminAccounts();
+      this.owToast(`${granted ? 'Gave' : 'Removed'} full mock exam ${granted ? 'to' : 'from'} ${displayName}`);
     } else {
       const d = await res.json().catch(() => ({}));
-      alert(`⚠️ Could not update Full Mock access: ${d.error || 'Make sure you ran the 2-column Supabase SQL snippet first!'}`);
+      this.owToast(`Could not update full mock access: ${d.error || 'check the Supabase columns'}`);
     }
   }
 
   async adminDeleteAccessCode(code) {
-    if (!confirm(`Revoke Access Code ${code}?`)) return;
+    if (!await this.owAsk({ title: `Delete code ${code}?`, body: 'Nobody new can sign up with it. People who already used it keep their access.', ok: 'Delete code', danger: true })) return;
     await this.apiCall('POST', { action: 'admin_delete_access_code', code });
     await this.loadAdminAccessCodes();
+    this.owToast(`Deleted ${code}`);
   }
 
   renderAdminUsersTable() {
-    const tbody = document.getElementById('admin-users-tbody');
-    if (!tbody) return;
+    const sel = document.getElementById('ow-title-user');
+    if (!sel) return;
     const users = this.liveLeaderboard.allUsers || [];
-    if (users.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400">No reviewees synced yet.</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = users.map(u => {
-      const badgeHtml = u.isOwner
-        ? `<span class="px-2 py-0.5 rounded bg-amber-400 text-on-accent font-black text-xs"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg> OWNER</span>`
-        : (u.title
-            ? `<span class="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${this.escapeHtml(u.title)}</span>`
-            : `<span class="text-slate-500 text-xs">No custom title</span>`);
-      return `
-        <tr>
-          <td class="py-2.5 font-bold text-white">${this.escapeHtml(u.name)} <span class="text-xs text-slate-500 font-mono">(${u.id.slice(0,8)})</span></td>
-          <td class="py-2.5">${badgeHtml}</td>
-          <td class="py-2.5 text-center font-mono text-xs text-slate-300">${(u.xp || 0).toLocaleString()} XP • ${u.rp || 1200} RP</td>
-          <td class="py-2.5 text-right space-x-1.5">
-            <button onclick="app.adminPromptTitle('${u.id}', '${this.escapeHtml(u.name)}', '${this.escapeHtml(u.title || '')}')" class="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/40 border border-sky-400/40 text-sky-300 text-xs font-bold">Give Title</button>
-            <button onclick="app.adminToggleOwner('${u.id}', ${!u.isOwner})" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-300 text-xs font-bold">${u.isOwner ? 'Remove Owner' : 'Make Owner'}</button>
-            <button onclick="app.adminDeleteUser('${u.id}', '${this.escapeHtml(u.name)}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 text-xs font-bold">Remove</button>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    const keep = sel.value;
+    sel.innerHTML = users.length ? users.map(u => `<option value="${this.escapeHtml(u.id)}">${this.escapeHtml(u.name)}${u.isOwner ? ' (owner)' : u.title ? ` · ${this.escapeHtml(u.title)}` : ''}</option>`).join('') : '<option value="">No reviewees on the leaderboard yet</option>';
+    if (users.some(u => u.id === keep)) sel.value = keep;
+    this.adminTitlePick();
   }
 
-  async adminPromptTitle(targetId, userName, currentTitle) {
-    const newTitle = prompt(`Assign a custom title/tag to ${userName} (e.g., "Topnotcher", "Area 1 Ace", "VIP Reviewee", or leave blank to clear):`, currentTitle);
-    if (newTitle === null) return;
-    await this.apiCall('POST', { action: 'admin_set_title', targetId, title: newTitle.trim() });
+  adminTitlePick() {
+    const users = this.liveLeaderboard.allUsers || [];
+    const u = users.find(x => x.id === document.getElementById('ow-title-user')?.value);
+    const input = document.getElementById('ow-title-text');
+    const more = document.getElementById('admin-users-tbody');
+    if (input) input.value = u && !u.isOwner ? (u.title || '') : '';
+    if (!more) return;
+    more.innerHTML = u ? `<span>${(u.xp || 0).toLocaleString()} XP · ${(u.rp || 1200).toLocaleString()} RP</span>
+      <button onclick="app.adminToggleOwner(document.getElementById('ow-title-user').value, ${!u.isOwner})" class="ow-btn sm">${u.isOwner ? 'Remove owner badge' : 'Make owner'}</button>
+      <button onclick="app.adminDeleteUser(document.getElementById('ow-title-user').value)" class="ow-btn sm danger">Remove from leaderboard</button>` : '';
+  }
+
+  async adminSaveTitle() {
+    const id = document.getElementById('ow-title-user')?.value;
+    if (!id) return;
+    const title = (document.getElementById('ow-title-text')?.value || '').trim();
+    await this.apiCall('POST', { action: 'admin_set_title', targetId: id, title });
     await this.refreshAdminUsers();
+    this.owToast(title ? `Title saved: ${title}` : 'Title cleared');
   }
 
   async adminToggleOwner(targetId, makeOwner) {
+    if (!targetId) return;
+    if (!await this.owAsk({ title: makeOwner ? 'Make this reviewee an owner?' : 'Remove their owner badge?', body: makeOwner ? 'They get the owner badge and are left out of the rankings.' : 'They go back to a normal reviewee.', ok: makeOwner ? 'Make owner' : 'Remove badge', danger: !makeOwner })) return;
     await this.apiCall('POST', { action: 'admin_set_title', targetId, title: makeOwner ? 'OWNER' : '', isOwner: makeOwner });
     await this.refreshAdminUsers();
   }
 
-  async adminDeleteUser(targetId, userName) {
-    if (!confirm(`Remove ${userName} from the live leaderboard?`)) return;
+  async adminDeleteUser(targetId) {
+    const u = (this.liveLeaderboard.allUsers || []).find(x => x.id === targetId);
+    if (!u || !await this.owAsk({ title: `Remove ${u.name} from the leaderboard?`, body: 'Their leaderboard entry is deleted. Their account stays.', ok: 'Remove', danger: true })) return;
     await this.apiCall('POST', { action: 'admin_delete_user', targetId });
     await this.refreshAdminUsers();
   }
@@ -560,26 +625,27 @@ class AgriBoardApp {
       document.getElementById('admin-generated-code-text').textContent = data.code;
       document.getElementById('admin-generated-code-box').classList.remove('hidden');
     } else {
-      alert(data.error || 'Could not generate reset code.');
+      this.owToast(data.error || 'Could not make a reset code.');
     }
   }
 
   copyGeneratedResetCode() {
     if (!this.lastGeneratedResetCode) return;
-    navigator.clipboard?.writeText(this.lastGeneratedResetCode);
-    alert(`Copied Reset Code: ${this.lastGeneratedResetCode}`);
+    this.owCopy(this.lastGeneratedResetCode);
   }
 
   async adminResetLeaderboard(scope) {
-    const msg = scope === 'all'
-      ? 'WIPE the entire leaderboard for all reviewees? This cannot be undone.'
-      : `Reset ${scope.toUpperCase()} scores for all reviewees?`;
-    if (!confirm(msg)) return;
+    const copy = {
+      pvp: ['Reset PvP ranks?', 'Everyone goes back to 1,200 RP. This cannot be undone.', 'Reset PvP'],
+      progression: ['Reset study XP and levels?', 'Clears the progression leaderboard for everyone. This cannot be undone.', 'Reset XP'],
+      all: ['Wipe the whole leaderboard?', 'PvP ranks and study XP for every reviewee. This cannot be undone.', 'Wipe all'],
+    }[scope];
+    if (!await this.owAsk({ title: copy[0], body: copy[1], ok: copy[2], danger: true })) return;
     const res = await this.apiCall('POST', { action: 'admin_reset_leaderboard', scope });
     if (res.ok) {
-      alert(`Leaderboard (${scope}) has been reset!`);
+      this.owToast('Leaderboard reset');
       await this.refreshAdminUsers();
-    }
+    } else this.owToast('Could not reset the leaderboard.');
   }
 
   async apiCall(method, body = null) {
@@ -3464,10 +3530,10 @@ class AgriBoardApp {
   }
 
   async adminClearChat() {
-    if (!confirm('Clear all Global Chat messages?')) return;
+    if (!await this.owAsk({ title: 'Clear global chat?', body: 'Deletes every chat message for everyone. This cannot be undone.', ok: 'Clear chat', danger: true })) return;
     await this.apiCall('POST', { action: 'admin_clear_chat' });
     await this.loadGlobalChat(true);
-    alert('🧹 Global Chat cleared!');
+    this.owToast('Global chat cleared');
   }
 
   reportCurrentQuestion(source = 'study') {
@@ -3529,29 +3595,34 @@ class AgriBoardApp {
   }
 
   async loadAdminFeedback() {
-    const box = document.getElementById('admin-feedback-list');
-    if (!box || !this.adminPasscode) return;
+    if (!document.getElementById('admin-feedback-list') || !this.adminPasscode) return;
     try {
       const res = await this.apiCall('POST', { action: 'admin_list_feedback' });
       const data = await res.json();
-      if (!res.ok || !Array.isArray(data.feedback) || data.feedback.length === 0) {
-        box.innerHTML = `<div class="text-xs text-slate-400 py-2">No reviewee feedback or suggestions yet.</div>`;
-        return;
-      }
-      box.innerHTML = data.feedback.map(f => `
-        <div class="bg-navy-950 border border-teal-500/30 rounded-xl p-3 flex items-start justify-between gap-3">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2 text-xs">
-              <span class="font-bold text-white">${this.escapeHtml(f.name)}</span>
-              <span class="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-bold text-xs">${this.escapeHtml(f.category)}</span>
-              <span class="text-slate-500 font-mono text-xs">${new Date(f.createdAt).toLocaleDateString()}</span>
-            </div>
-            <div class="text-xs text-slate-200 whitespace-pre-line">${this.escapeHtml(f.message)}</div>
-          </div>
-          <button onclick="app.adminDeleteFeedback('${f.id}')" class="px-2 py-1 rounded bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-bold shrink-0">Delete</button>
-        </div>
-      `).join('');
+      this.owFeedback = res.ok && Array.isArray(data.feedback) ? data.feedback : [];
+      this.renderAdminFeedback();
     } catch (e) {}
+  }
+
+  renderAdminFeedback() {
+    const box = document.getElementById('admin-feedback-list');
+    const chips = document.getElementById('ow-fb-chips');
+    if (!box) return;
+    const esc = (x) => this.escapeHtml(x);
+    const all = this.owFeedback || [];
+    this.owStats();
+    const cats = [...new Set(all.map(f => f.category || 'Other'))];
+    if (this.owFb && !cats.includes(this.owFb)) this.owFb = '';
+    chips.innerHTML = all.length ? [['', `All ${all.length}`], ...cats.map(c => [c, `${c} ${all.filter(f => (f.category || 'Other') === c).length}`])]
+      .map(([k, label], i) => `<button class="ow-chip ${(this.owFb || '') === k ? 'on' : ''}" onclick="app.owFb=${i ? `app.owFbCats[${i - 1}]` : "''"}; app.renderAdminFeedback()">${esc(label)}</button>`).join('') : '';
+    this.owFbCats = cats;
+    const tone = (c) => /correct/i.test(c) ? 'gold' : /bug|error|problem/i.test(c) ? 'rust' : /idea|suggest|feature/i.test(c) ? 'blue' : 'gray';
+    const list = all.map((f, i) => [f, i]).filter(([f]) => !this.owFb || (f.category || 'Other') === this.owFb);
+    box.innerHTML = list.length ? list.map(([f, i]) => `<div class="ow-fb">
+        <div class="flex flex-wrap items-center gap-2 text-[12.5px] text-slate-400"><span class="ow-tag ${tone(f.category || '')}">${esc(f.category || 'Other')}</span><b class="font-semibold text-[13.5px] text-white">${esc(f.name)}</b><span>· ${new Date(f.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>
+        <p class="text-[14.5px] mt-1.5 whitespace-pre-line break-words">${esc(f.message)}</p>
+        <button onclick="app.adminDeleteFeedback(app.owFeedback[${i}].id)" class="ow-btn sm danger mt-2"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg>Delete</button>
+      </div>`).join('') : `<div class="ow-empty">No feedback yet. Reviewees send it with Report on a question or the feedback form.</div>`;
   }
 
   async adminDeleteFeedback(feedbackId) {
@@ -3645,99 +3716,81 @@ class AgriBoardApp {
   async loadAdminReviewers() {
     const listBox = document.getElementById('admin-reviewers-list');
     const contribBox = document.getElementById('admin-reviewers-contributors');
-    const pill = document.getElementById('admin-reviewers-storage-pill');
     if (!listBox || !this.adminPasscode) return;
+    const esc = (x) => this.escapeHtml(x);
     try {
       const res = await this.apiCall('POST', { action: 'admin_list_reviewers' });
       const data = await res.json();
       if (!res.ok) {
-        listBox.innerHTML = `<div class="text-xs text-amber-300 py-2"><svg class="ic" aria-hidden="true"><use href="#i-triangle-alert"/></svg> Reviewer submissions table not set up yet in Supabase. Run the setup SQL in Supabase SQL Editor.</div>`;
+        listBox.innerHTML = `<div class="ow-empty">The reviewer files table is not set up in Supabase yet. Run the setup SQL in the Supabase SQL Editor.</div>`;
         return;
       }
-
-      const mbUsed = ((data.activeStorageBytes || 0) / (1024 * 1024)).toFixed(2);
-      if (pill) pill.textContent = `${data.activeFilesCount || 0} stored • ${mbUsed} MB / 1,000 MB`;
-
-      // Per-user contributor summary pills with 1-click reward button
-      if (contribBox) {
-        const contribs = data.contributors || [];
-        if (contribs.length === 0) {
-          contribBox.innerHTML = '';
-        } else {
-          contribBox.innerHTML = contribs.map(c => `
-            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-950/70 border border-indigo-400/40 text-xs">
-              <span class="font-bold text-white">${this.escapeHtml(c.senderName)}</span>
-              <span class="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono font-bold text-xs">${c.count} sent</span>
-              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(c.usernameKey)}', '${this.escapeHtml(c.senderName)}')" class="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-500/50 border border-emerald-400/40 text-emerald-200 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-gift"/></svg> +Days</button>
-            </div>
-          `).join('');
-        }
-      }
-
+      const mb = (data.activeStorageBytes || 0) / (1024 * 1024);
+      const contribs = data.contributors || [];
       const list = data.reviewers || [];
-      if (list.length === 0) {
-        listBox.innerHTML = `<div class="text-xs text-slate-400 py-2">No reviewers submitted yet. Reviewees can click "<svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Submit Reviewer (.docx)" in the sidebar or mobile chat.</div>`;
+      this.owFiles = list; this.owContribs = contribs;
+      document.getElementById('admin-reviewers-storage-pill').innerHTML = `<b class="font-mono text-white">${data.activeFilesCount || 0}</b> stored file${data.activeFilesCount === 1 ? '' : 's'} from ${contribs.length} ${contribs.length === 1 ? 'person' : 'people'}`;
+      document.getElementById('ow-mb-of').textContent = `${mb.toFixed(1)} / 1,000 MB`;
+      document.getElementById('ow-store-bar').style.width = `${Math.min(100, mb / 10)}%`;
+      const mbEl = document.getElementById('ow-mb');
+      if (mbEl) mbEl.textContent = Math.round(mb).toLocaleString();
+      if (contribBox) contribBox.innerHTML = contribs.map((c, i) => `<button onclick="app.adminFile('contrib', ${i})" title="Reward ${esc(c.senderName)}" class="ow-tag plum !min-h-[30px] !px-2.5 hover:brightness-110">${esc(c.senderName)} · ${c.count}<svg class="ic" aria-hidden="true"><use href="#i-gift"/></svg></button>`).join('');
+      if (!list.length) {
+        listBox.innerHTML = `<div class="ow-empty">No files yet. Reviewees share them with "Submit reviewer" in the sidebar.</div>`;
         return;
       }
-
-      const countByUser = {};
-      (data.contributors || []).forEach(c => { countByUser[c.usernameKey] = c.count; });
-
-      listBox.innerHTML = list.map(r => {
-        const sizeMb = r.fileSize ? `${(r.fileSize / (1024 * 1024)).toFixed(2)} MB` : '—';
-        const userTotal = countByUser[r.usernameKey] || 1;
-        const isFreed = !r.filePath || r.status === 'added';
-        return `
-          <div class="bg-navy-950 border ${isFreed ? 'border-emerald-500/30' : 'border-indigo-500/35'} rounded-xl p-3 flex flex-wrap items-start justify-between gap-3">
-            <div class="space-y-1 min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-1.5 text-xs">
-                <span class="font-extrabold text-white">${this.escapeHtml(r.senderName)}</span>
-                <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 font-mono font-bold text-xs">${userTotal} total sent</span>
-                <span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold text-xs">${this.escapeHtml(r.area)}</span>
-                <span class="text-slate-400 font-mono text-xs">${sizeMb} • ${new Date(r.createdAt).toLocaleDateString()}</span>
-                ${isFreed ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> Added (File Freed)</span>` : ''}
-              </div>
-              <div class="text-xs font-bold text-sky-200 break-words"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg> ${this.escapeHtml(r.title)} <span class="font-normal text-slate-400">(${this.escapeHtml(r.fileName)})</span></div>
-              ${r.notes ? `<div class="text-xs text-slate-300 whitespace-pre-line">${this.escapeHtml(r.notes)}</div>` : ''}
-            </div>
-            <div class="flex flex-wrap items-center gap-1.5 shrink-0">
-              ${r.fileUrl ? `<a href="${this.escapeHtml(r.fileUrl)}" target="_blank" download="${this.escapeHtml(r.fileName)}" class="px-2.5 py-1 rounded-lg bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/50 text-sky-200 text-xs font-bold">⬇ Download</a>` : ''}
-              ${!isFreed ? `<button onclick="app.adminMarkReviewerAdded('${r.id}')" title="Deletes file from Supabase Storage to free space while keeping the user's contributor count" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-400/50 text-emerald-200 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg> Added & Free Space</button>` : ''}
-              <button onclick="app.adminQuickRewardReviewer('${this.escapeHtml(r.usernameKey)}', '${this.escapeHtml(r.senderName)}')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-amber-200 text-xs font-bold"><svg class="ic" aria-hidden="true"><use href="#i-gift"/></svg> Reward Days</button>
-              <button onclick="app.adminDeleteReviewer('${r.id}')" class="px-2 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-bold">Delete</button>
-            </div>
+      listBox.innerHTML = list.map((r, i) => {
+        const size = r.fileSize ? `${(r.fileSize / (1024 * 1024)).toFixed(1)} MB` : '–';
+        const freed = !r.filePath || r.status === 'added';
+        return `<div class="ow-file">
+          <span class="ow-fi"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg></span>
+          <div class="min-w-0">
+            <b class="font-semibold text-sm break-words">${esc(r.title || r.fileName)}</b> ${freed ? '<span class="ow-tag green">Added · file freed</span>' : ''}
+            <div class="ow-meta">${esc(r.senderName)} · ${esc(r.area || '')} · <span class="font-mono text-xs">${size}</span> · ${new Date(r.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</div>
+            ${r.notes ? `<div class="text-[13px] mt-1 whitespace-pre-line break-words">${esc(r.notes)}</div>` : ''}
           </div>
-        `;
+          <div class="ow-file-act">
+            ${r.fileUrl ? `<a href="${esc(r.fileUrl)}" target="_blank" rel="noopener" download="${esc(r.fileName)}" class="ow-btn sm"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Download</a>` : ''}
+            ${!freed ? `<button onclick="app.adminFile('added', ${i})" title="Deletes the file from storage and keeps their count" class="ow-btn sm"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg>Mark added</button>` : ''}
+            <button onclick="app.adminFile('reward', ${i})" class="ow-btn sm"><svg class="ic" aria-hidden="true"><use href="#i-gift"/></svg>Reward</button>
+            <button onclick="app.adminFile('delete', ${i})" aria-label="Delete file" class="ow-btn sm danger"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg></button>
+          </div>
+        </div>`;
       }).join('');
     } catch (e) {}
   }
 
+  adminFile(act, i) {
+    if (act === 'contrib') { const c = this.owContribs?.[i]; if (c) this.adminQuickRewardReviewer(c.usernameKey, c.senderName); return; }
+    const r = this.owFiles?.[i];
+    if (!r) return;
+    if (act === 'added') return this.adminMarkReviewerAdded(r.id);
+    if (act === 'delete') return this.adminDeleteReviewer(r.id);
+    if (act === 'reward') return this.adminQuickRewardReviewer(r.usernameKey, r.senderName);
+  }
+
   async adminMarkReviewerAdded(reviewerId) {
-    if (!confirm('Mark this reviewer as Added and delete the file from Supabase Storage to free up your 1 GB? (The reviewee\'s contribution count will stay saved!)')) return;
+    if (!await this.owAsk({ title: 'Mark as added?', body: 'Deletes the file from storage to free space. Their contribution count stays.', ok: 'Mark added' })) return;
     await this.apiCall('POST', { action: 'admin_mark_reviewer_added', reviewerId });
     await Promise.all([this.loadAdminReviewers(), this.loadAdminAccounts()]);
   }
 
   async adminDeleteReviewer(reviewerId) {
-    if (!confirm('Delete this submission completely (removes both the file and the count record)?')) return;
+    if (!await this.owAsk({ title: 'Delete this file?', body: 'Removes the file and its record, so it no longer counts for the sender.', ok: 'Delete', danger: true })) return;
     await this.apiCall('POST', { action: 'admin_delete_reviewer', reviewerId });
     await Promise.all([this.loadAdminReviewers(), this.loadAdminAccounts()]);
   }
 
   async adminQuickRewardReviewer(usernameKey, senderName) {
-    const choice = prompt(`Reward ${senderName} with bonus access days!\nType one of: 1d, 3d, 7d, 14d, 30d, 90d, or unli`, '7d');
-    if (!choice) return;
-    const duration = choice.trim().toLowerCase();
-    if (!['1d', '3d', '7d', '14d', '30d', '90d', 'unli'].includes(duration)) {
-      alert('Please enter one of: 1d, 3d, 7d, 14d, 30d, 90d, or unli');
-      return;
-    }
+    const duration = await this.owAsk({ title: `Reward ${senderName}`, body: 'Add bonus access days for sharing a reviewer.', ok: 'Give reward',
+      options: [['1d', '+1 day'], ['3d', '+3 days'], ['7d', '+1 week'], ['14d', '+2 weeks'], ['30d', '+1 month'], ['90d', '+3 months'], ['unli', 'Unlimited']], });
+    if (!duration) return;
     const res = await this.apiCall('POST', { action: 'admin_renew_account', usernameKey, duration });
     if (res.ok) {
       await this.loadAdminAccounts();
-      alert(`🎁 Rewarded ${senderName} with +${duration === 'unli' ? 'Unlimited' : duration} access!`);
+      this.owToast(`Rewarded ${senderName} with ${duration === 'unli' ? 'unlimited access' : `+${duration}`}`);
     } else {
-      alert(`Could not find account "${senderName}" to reward.`);
+      this.owToast(`Could not find ${senderName}'s account to reward.`);
     }
   }
 
