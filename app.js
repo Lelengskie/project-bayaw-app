@@ -180,6 +180,9 @@ class AgriBoardApp {
           this.updateOwnerBadgeUI();
         }
         this.renderLeaderboards();
+        this.renderGroupCard();
+        if (!document.getElementById('view-groups').classList.contains('hidden')) this.renderGroupView();
+        if (this.user.loggedIn) this.checkGroupmatesOnline();
         if (!document.getElementById('view-admin').classList.contains('hidden') && this.isAdminVerified) {
           this.renderAdminUsersTable();
         }
@@ -891,7 +894,7 @@ class AgriBoardApp {
   }
 
   showView(viewName) {
-    const views = ['home', 'dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'weak', 'admin', 'mock-exam'];
+    const views = ['home', 'dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'weak', 'groups', 'admin', 'mock-exam'];
     views.forEach(v => {
       const el = document.getElementById(`view-${v}`);
       if (el) el.classList.add('hidden');
@@ -909,6 +912,7 @@ class AgriBoardApp {
     if (viewName === 'vault') this.renderVault();
     if (viewName === 'progress') this.renderAllLevelsProgress();
     if (viewName === 'weak') this.renderWeakTopics();
+    if (viewName === 'groups') this.renderGroupView();
     if (viewName === 'home') { this.renderHome(); this.maybePlayHomeIntro(); }
   }
 
@@ -1136,6 +1140,8 @@ class AgriBoardApp {
       $('home-tl-done').style.width = `calc((100% - 12px) * ${ex / 100})`;
       $('home-tl-today').textContent = new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
     }
+
+    this.renderGroupCard();
 
     // Continue button
     $('home-continue-label').textContent = `Area ${d.lastArea || 1} · Level ${d.lastLevel || 1}`;
@@ -2598,6 +2604,311 @@ class AgriBoardApp {
       this.chatMessages = [...have, ...data.messages].slice(-50);
       this.renderGlobalChat(this.chatMessages);
     } catch (e) {}
+  }
+
+  // ==================== STUDY GROUP ====================
+  // Group data rides along with the leaderboard fetch; only create / join / leave / remove write to Supabase.
+  groupLevel(xp) {
+    const steps = [0, 2000, 5000, 12000, 25000, 35000, 45000, 60000, 80000, 100000];
+    let lv = 1;
+    while (lv < 10 && xp >= steps[lv]) lv++;
+    const stages = ['Seed', 'Sprout', 'Sapling', 'Bloom', 'Harvest'];
+    const stageIdx = lv <= 2 ? 0 : lv === 3 ? 1 : lv === 4 ? 2 : lv <= 7 ? 3 : 4;
+    const next = lv < 10 ? steps[lv] : null;
+    const pct = next ? Math.min(100, (xp - steps[lv - 1]) / (next - steps[lv - 1]) * 100) : 100;
+    return { lv, stage: stages[stageIdx], stageIdx, stages, next, pct };
+  }
+
+  groupData() {
+    const now = Date.now();
+    const groups = new Map();
+    for (const u of this.liveLeaderboard?.allUsers || []) {
+      if (!u.group) continue;
+      let g = groups.get(u.group.id);
+      if (!g) groups.set(u.group.id, g = { ...u.group, members: [], xp: 0, online: 0 });
+      const isMe = u.id === this.user.id;
+      const xp = isMe ? (this.user.xp || 0) : (u.xp || 0);
+      const online = isMe || (!!u.lastActiveAt && now - u.lastActiveAt <= 180000);
+      g.members.push({ ...u, xp, online, isMe });
+      g.xp += xp;
+      if (online) g.online++;
+    }
+    const list = [...groups.values()].sort((a, b) => b.xp - a.xp);
+    list.forEach(g => g.members.sort((a, b) => b.xp - a.xp));
+    return { list, mine: list.find(g => g.members.some(m => m.isMe)) || null };
+  }
+
+  schoolRanks(list) {
+    const m = new Map();
+    for (const g of list) {
+      if (!g.school) continue;
+      const k = g.school.toLowerCase();
+      const s = m.get(k) || { name: g.school, xp: 0, groups: 0, members: 0 };
+      s.xp += g.xp; s.groups++; s.members += g.members.length;
+      m.set(k, s);
+    }
+    return [...m.values()].sort((a, b) => b.xp - a.xp);
+  }
+
+  currentStreak() {
+    const d = this.dailyState();
+    return (d.lastHit === this.localDay() || d.lastHit === this.localDay(-1)) ? (d.streak || 0) : 0;
+  }
+
+  renderGroupCard() {
+    const el = document.getElementById('home-group');
+    if (!el) return;
+    const esc = (s) => this.escapeHtml(s);
+    const { mine } = this.groupData();
+    const btn = 'min-h-[44px] px-4 rounded-[10px] text-sm font-semibold inline-flex items-center gap-2';
+    if (mine) {
+      const L = this.groupLevel(mine.xp);
+      el.innerHTML = `<div class="flex flex-wrap items-center gap-4">
+        <div class="group-crest">${esc(mine.name[0].toUpperCase())}</div>
+        <div class="flex-1 min-w-[180px]">
+          <div class="label-mono">Study group</div>
+          <div class="font-serif text-[19px] mt-0.5 truncate">${esc(mine.name)}</div>
+          <div class="flex justify-between gap-2 text-xs text-slate-400 mt-2"><span>Lv ${L.lv} · ${L.stage}</span><span class="font-mono">${mine.xp.toLocaleString()} XP</span></div>
+          <div class="home-bar mt-1.5"><b style="width:${L.pct.toFixed(1)}%; background:var(--accent)"></b></div>
+        </div>
+        <div class="text-sm flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span><span class="font-mono">${mine.online}</span><span class="text-slate-400">of ${mine.members.length} online</span></div>
+        <button onclick="app.showView('groups')" class="${btn} border border-rule hover:border-emerald-500">View group <svg class="ic" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+      </div>`;
+      return;
+    }
+    const streak = this.currentStreak();
+    const unlocked = streak >= 7 || this.user.isOwner;
+    el.innerHTML = `<div class="flex flex-wrap items-center gap-4">
+      <div class="group-crest"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></div>
+      <div class="flex-1 min-w-[200px]">
+        <div class="label-mono">Study group</div>
+        <div class="font-serif text-[19px] mt-0.5">Review with your groupmates</div>
+        <p class="text-[13px] text-slate-400 mt-1">Every member's XP levels up the group. ${unlocked ? 'You can start a group.' : `Start your own at a 7-day streak (<span class="font-mono text-amber-300">${Math.min(streak, 7)} / 7</span>).`}</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="app.setGroupTab('mine'); app.showView('groups')" class="${btn} bg-emerald-600 hover:bg-emerald-700 text-on-accent">Join with code</button>
+        <button onclick="app.setGroupTab('mine'); app.showView('groups')" class="${btn} border border-rule ${unlocked ? 'hover:border-emerald-500' : 'text-slate-400'}">${unlocked ? '' : '<svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> '}Create</button>
+      </div>
+    </div>`;
+  }
+
+  setGroupTab(tab) {
+    this.groupTab = tab;
+    this.renderGroupView();
+  }
+
+  renderGroupView() {
+    const root = document.getElementById('group-body');
+    if (!root) return;
+    const tab = this.groupTab || 'mine';
+    document.querySelectorAll('.group-tab').forEach(b => b.classList.toggle('on', b.dataset.gtab === tab));
+    const esc = (s) => this.escapeHtml(s);
+    const { list, mine } = this.groupData();
+    const btn = 'min-h-[44px] px-4 rounded-[10px] text-sm font-semibold inline-flex items-center justify-center gap-2';
+
+    if (!this.user.loggedIn) {
+      root.innerHTML = `<div class="panel p-6 text-center space-y-3"><h1 class="font-serif !font-normal text-[26px]">Study groups</h1><p class="text-sm text-slate-400">Sign in to join or start a study group.</p><button onclick="app.openAuthModal('login')" class="${btn} bg-emerald-600 hover:bg-emerald-700 text-on-accent">Sign in</button></div>`;
+      return;
+    }
+
+    if (tab === 'rank') {
+      const mode = this.groupRankMode || 'groups';
+      const rows = mode === 'groups'
+        ? list.map((g, i) => {
+            const L = this.groupLevel(g.xp);
+            const del = this.user.isOwner ? `<button onclick="app.deleteGroup('${esc(g.id)}')" class="text-xs text-rose-300/80 hover:text-rose-300 px-2 min-h-[36px]">Delete</button>` : '';
+            return `<div class="flex items-center gap-3 py-3 ${mine && g.id === mine.id ? 'text-emerald-300' : ''}">
+              <span class="font-mono w-7 text-slate-400">${i + 1}</span>
+              <div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(g.name)}</div><div class="text-xs text-slate-400 truncate">Lv ${L.lv} ${L.stage} · ${g.members.length} member${g.members.length === 1 ? '' : 's'}${g.school ? ' · ' + esc(g.school) : ''}</div></div>
+              <span class="font-mono text-sm">${g.xp.toLocaleString()}</span>${del}
+            </div>`;
+          })
+        : this.schoolRanks(list).map((s, i) => `<div class="flex items-center gap-3 py-3">
+              <span class="font-mono w-7 text-slate-400">${i + 1}</span>
+              <div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(s.name)}</div><div class="text-xs text-slate-400">${s.groups} group${s.groups === 1 ? '' : 's'} · ${s.members} member${s.members === 1 ? '' : 's'}</div></div>
+              <span class="font-mono text-sm">${s.xp.toLocaleString()}</span>
+            </div>`);
+      root.innerHTML = `<div class="panel p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div><div class="label-mono">Rankings by total XP</div><h1 class="font-serif !font-normal text-[26px] mt-1">${mode === 'groups' ? 'Top study groups' : 'Top schools'}</h1></div>
+          <div class="flex gap-2"><button onclick="app.groupRankMode='groups'; app.renderGroupView()" class="group-tab ${mode === 'groups' ? 'on' : ''}">Groups</button><button onclick="app.groupRankMode='schools'; app.renderGroupView()" class="group-tab ${mode === 'schools' ? 'on' : ''}">Schools</button></div>
+        </div>
+        <div class="divide-y divide-[color:var(--line)] border-t border-rule">${rows.join('') || `<p class="py-6 text-sm text-slate-400">No ${mode === 'groups' ? 'study groups' : 'schools'} yet. Be the first.</p>`}</div>
+        <p class="text-xs text-slate-400">School ranking adds up every group that set the same school. Groups without a school still appear in group rankings.</p>
+      </div>`;
+      return;
+    }
+
+    if (!mine) {
+      const streak = this.currentStreak();
+      const unlocked = streak >= 7 || this.user.isOwner;
+      const lockAttr = unlocked ? '' : 'disabled';
+      root.innerHTML = `<div class="grid gap-4 md:grid-cols-2">
+        <div class="panel p-5">
+          <div class="label-mono">Join a group</div>
+          <h2 class="font-serif !font-normal text-[26px] mt-1.5">Got an invite code?</h2>
+          <p class="text-sm text-slate-400 mt-1">Ask your groupmate for the code and review together. Anyone can join, up to 20 per group.</p>
+          <label class="block text-sm mt-4">Invite code<input id="group-join-code" class="group-input font-mono uppercase tracking-[.15em]" maxlength="6" autocomplete="off" placeholder="XXXXXX" onkeydown="if(event.key==='Enter') app.joinGroup()" /></label>
+          <button onclick="app.joinGroup()" class="${btn} mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-on-accent">Join group</button>
+        </div>
+        <div class="panel p-5">
+          <div class="label-mono">Create a group</div>
+          <h2 class="font-serif !font-normal text-[26px] mt-1.5">Start your own study group</h2>
+          <p class="text-sm text-slate-400 mt-1">Leaders are consistent reviewers. Keep a <b class="text-white">7-day streak</b> to unlock this.</p>
+          <div class="text-[13px] mt-3"><span class="font-mono text-amber-300">${Math.min(streak, 7)} / 7</span> <span class="text-slate-400">${unlocked ? 'Unlocked.' : `days. Hit your daily goal ${7 - streak} more day${7 - streak === 1 ? '' : 's'} in a row.`}</span></div>
+          <label class="block text-sm mt-4">Group name<input id="group-new-name" class="group-input" maxlength="30" placeholder="e.g. Agri Engineers 2027" ${lockAttr} /></label>
+          <label class="block text-sm mt-3">School <span class="text-slate-400">(optional)</span><input id="group-new-school" class="group-input" maxlength="60" placeholder="e.g. CSU Sanchez Mira" ${lockAttr} /></label>
+          <button onclick="app.createGroup()" class="${btn} mt-4 w-full ${unlocked ? 'bg-emerald-600 hover:bg-emerald-700 text-on-accent' : 'border border-rule text-slate-400 cursor-not-allowed'}" ${lockAttr}>${unlocked ? 'Create group' : '<svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Unlocks at a 7-day streak'}</button>
+        </div>
+      </div>`;
+      return;
+    }
+
+    const L = this.groupLevel(mine.xp);
+    const amLeader = mine.leaderId === this.user.id;
+    const rank = list.indexOf(mine) + 1;
+    const schoolList = this.schoolRanks(list);
+    const schoolRank = mine.school ? schoolList.findIndex(s => s.name.toLowerCase() === mine.school.toLowerCase()) + 1 : 0;
+    if (this.groupCodeFor !== mine.id) { this.groupCode = null; this.groupCodeFor = mine.id; }
+    const code = this.groupCode
+      ? `<span class="group-code">${esc(this.groupCode)}</span><button onclick="app.copyGroupCode(this)" class="${btn} border border-rule hover:border-emerald-500"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> Copy</button>`
+      : `<button onclick="app.showGroupCode()" class="${btn} border border-rule hover:border-emerald-500">Show invite code</button>`;
+    const members = mine.members.map(m => `<div class="flex items-center gap-3 py-2.5">
+        <div class="relative w-9 h-9 rounded-full grid place-items-center bg-[color:var(--accent-soft)] text-emerald-300 font-semibold shrink-0">${esc((m.name || '?')[0].toUpperCase())}${m.online ? '<span class="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[color:var(--surface)]"></span>' : ''}</div>
+        <div class="flex-1 min-w-0 flex flex-wrap items-center gap-x-1.5"><span class="font-semibold truncate">${esc(m.name || 'Reviewee')}${m.isMe ? ' <span class="text-slate-400 font-normal">(you)</span>' : ''}</span>${m.id === mine.leaderId ? '<span class="text-amber-300 text-xs inline-flex items-center gap-1"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg>Leader</span>' : ''}${this.renderLastSeen({ isUser: m.isMe, lastActiveAt: m.lastActiveAt })}</div>
+        <span class="font-mono text-sm">${m.xp.toLocaleString()}</span>
+        ${amLeader && !m.isMe ? `<button onclick="app.kickMember('${esc(m.id)}')" aria-label="Remove ${esc(m.name || 'member')}" class="w-9 h-9 rounded-lg text-slate-400 hover:text-rose-300 grid place-items-center"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>` : ''}
+      </div>`).join('');
+    root.innerHTML = `<div class="panel p-5 sm:p-6 grid gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+        <div class="min-w-0">
+          <div class="label-mono">Study group</div>
+          <div class="flex items-center gap-3.5 mt-2.5">
+            <div class="group-crest">${esc(mine.name[0].toUpperCase())}</div>
+            <div class="min-w-0">
+              <h1 class="font-serif !font-normal text-[26px] sm:text-[34px] leading-tight break-words">${esc(mine.name)}</h1>
+              <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-400 mt-1">${mine.school ? `<span>${esc(mine.school)}</span>` : ''}<span class="inline-flex items-center gap-1"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>${mine.members.length} / 20 members</span></div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 mt-5"><span class="label-mono">Invite code</span>${code}</div>
+        </div>
+        <div>
+          <div class="label-mono">Group level</div>
+          <div class="flex items-baseline gap-2.5 mt-2"><b class="font-mono text-[28px] font-normal">Lv ${L.lv}</b><span class="font-serif text-[22px]">${L.stage}</span></div>
+          <div class="flex justify-between gap-2 text-[13px] text-slate-400 mt-3 mb-1.5"><span><b class="font-mono font-normal text-white">${mine.xp.toLocaleString()}</b> group XP</span><span>${L.next ? `${(L.next - mine.xp).toLocaleString()} to Lv ${L.lv + 1}` : 'Max level'}</span></div>
+          <div class="home-bar"><b style="width:${L.pct.toFixed(1)}%; background:var(--accent)"></b></div>
+          <div class="group-stages">${L.stages.map((s, i) => `<span class="${i <= L.stageIdx ? 'on' : ''}">${s.toUpperCase()}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="panel p-4"><b class="block font-mono text-[24px] font-normal text-emerald-400">${mine.online}</b><span class="text-xs text-slate-400">online now</span></div>
+        <div class="panel p-4"><b class="block font-mono text-[24px] font-normal">#${rank}</b><span class="text-xs text-slate-400">of ${list.length} group${list.length === 1 ? '' : 's'}</span></div>
+        <div class="panel p-4"><b class="block font-mono text-[24px] font-normal">${schoolRank ? '#' + schoolRank : '—'}</b><span class="text-xs text-slate-400">${schoolRank ? `of ${schoolList.length} school${schoolList.length === 1 ? '' : 's'}` : 'no school set'}</span></div>
+      </div>
+      <div class="grid gap-4 md:grid-cols-[1.4fr_1fr]">
+        <div class="panel p-5">
+          <div class="flex justify-between items-center"><span class="label-mono">Members</span><span class="text-xs text-slate-400">sorted by XP</span></div>
+          <div class="divide-y divide-[color:var(--line)] mt-1">${members}</div>
+        </div>
+        <div class="space-y-4">
+          <div class="panel p-5"><div class="label-mono">How group XP works</div><p class="text-sm text-slate-400 mt-2">Every member's XP adds to the group. Study together, level up together, and climb the group and school rankings. When a groupmate starts reviewing, you get a heads-up.</p></div>
+          <div class="panel p-5"><div class="label-mono">Levels</div><div class="grid gap-2 mt-2.5 text-[13.5px]">
+            ${[['Lv 1–2 · Seed', '0 XP', 0], ['Lv 3 · Sprout', '5,000', 1], ['Lv 4 · Sapling', '12,000', 2], ['Lv 5–7 · Bloom', '25,000', 3], ['Lv 8–10 · Harvest', '60,000', 4]].map(([a, b, i]) => `<div class="flex justify-between ${i === L.stageIdx ? 'text-emerald-300 font-semibold' : ''}"><span>${a}</span><span class="font-mono ${i === L.stageIdx ? '' : 'text-slate-400'}">${b}</span></div>`).join('')}
+          </div></div>
+          <button onclick="app.leaveGroup()" class="${btn} border border-rule text-slate-400 hover:text-rose-300">Leave group</button>
+        </div>
+      </div>`;
+  }
+
+  async groupPost(body) {
+    if (!this.user.loggedIn) { this.openAuthModal('login'); return null; }
+    try {
+      const res = await this.apiCall('POST', body);
+      const data = await res.json();
+      if (!res.ok || data?.ok === false) { alert(data?.error || 'Something went wrong. Please try again.'); return null; }
+      return data;
+    } catch (e) {
+      alert('Could not reach the server. Check your connection and try again.');
+      return null;
+    }
+  }
+
+  async groupChanged() {
+    await this.fetchLiveLeaderboard();
+    this.renderGroupView();
+    this.renderGroupCard();
+  }
+
+  async joinGroup() {
+    const code = (document.getElementById('group-join-code')?.value || '').trim().toUpperCase();
+    if (!code) return;
+    if (await this.groupPost({ action: 'group_join', code })) { this.groupTab = 'mine'; await this.groupChanged(); }
+  }
+
+  async createGroup() {
+    const name = (document.getElementById('group-new-name')?.value || '').trim();
+    const school = (document.getElementById('group-new-school')?.value || '').trim();
+    if (name.length < 3) { alert('Group name must be 3 to 30 characters.'); return; }
+    // The server checks the streak from saved progress, so save first
+    clearTimeout(this.syncDebounceTimer);
+    await this.syncUserToLeaderboard();
+    const d = await this.groupPost({ action: 'group_create', name, school });
+    if (d) { this.groupCode = d.code; this.groupCodeFor = d.groupId; await this.groupChanged(); }
+  }
+
+  async leaveGroup() {
+    if (!confirm('Leave your study group? You can join again with an invite code.')) return;
+    if (await this.groupPost({ action: 'group_leave' })) await this.groupChanged();
+  }
+
+  async kickMember(id) {
+    const m = this.groupData().mine?.members.find(x => x.id === id);
+    if (!m || !confirm(`Remove ${m.name || 'this member'} from the group?`)) return;
+    if (await this.groupPost({ action: 'group_kick', memberId: id })) await this.groupChanged();
+  }
+
+  async deleteGroup(id) {
+    const g = this.groupData().list.find(x => x.id === id);
+    if (!g || !confirm(`Delete the study group "${g.name}"? Its ${g.members.length} member(s) will be removed from it.`)) return;
+    if (await this.groupPost({ action: 'group_delete', groupId: id })) await this.groupChanged();
+  }
+
+  async showGroupCode() {
+    const d = await this.groupPost({ action: 'group_code' });
+    if (d) { this.groupCode = d.code; this.renderGroupView(); }
+  }
+
+  copyGroupCode(btn) {
+    navigator.clipboard?.writeText(this.groupCode || '');
+    if (btn) { btn.lastChild.textContent = ' Copied'; setTimeout(() => { btn.lastChild.textContent = ' Copy'; }, 1500); }
+  }
+
+  // Called after each leaderboard refresh: pops up when a groupmate went from offline to online
+  checkGroupmatesOnline() {
+    const { mine } = this.groupData();
+    const now = new Set(mine ? mine.members.filter(m => m.online && !m.isMe).map(m => m.id) : []);
+    const prev = this.groupOnlineIds;
+    if (prev && mine && prev.gid === mine.id) {
+      const fresh = mine.members.filter(m => !m.isMe && now.has(m.id) && !prev.has(m.id));
+      if (fresh.length) this.showGroupToast(fresh.map(m => m.name || 'A groupmate'));
+    }
+    now.gid = mine?.id;
+    this.groupOnlineIds = now;
+  }
+
+  showGroupToast(names) {
+    document.getElementById('group-toast')?.remove();
+    const esc = (s) => this.escapeHtml(s);
+    const title = names.length > 1 ? `${names[0]} and ${names.length - 1} more are online` : `${names[0]} is online`;
+    const el = document.createElement('div');
+    el.id = 'group-toast';
+    el.className = 'group-toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.innerHTML = `<div class="relative w-10 h-10 rounded-full grid place-items-center bg-[color:var(--accent-soft)] text-emerald-300 font-semibold shrink-0">${esc(names[0][0].toUpperCase())}<span class="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[color:var(--surface)]"></span></div>
+      <button onclick="this.parentElement.remove(); app.showView('groups')" class="flex-1 min-w-0 text-left"><b class="block text-sm truncate">${esc(title)}</b><span class="text-xs text-slate-400">Your study groupmate${names.length > 1 ? 's' : ''} just started reviewing</span></button>
+      <button onclick="this.parentElement.remove()" aria-label="Dismiss" class="w-10 h-10 rounded-lg text-slate-400 hover:text-white grid place-items-center shrink-0"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 7000);
   }
 
   openMoreSheet() {

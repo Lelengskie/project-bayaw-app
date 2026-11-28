@@ -78,10 +78,14 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
   try {
     if (method === 'GET') {
-      const [{ data: accs, error: accErr }, { data: cfg }] = await Promise.all([
-        sb.from('accounts').select('id,username_key,name,is_owner,title,a1_levels,a2_levels,a3_levels,a1_mastered,a2_mastered,a3_mastered,total_mastered,xp,rp,pvp_wins,pvp_losses,best_time_sec,last_active_at,updated_at'),
+      const cols = 'id,username_key,name,is_owner,title,a1_levels,a2_levels,a3_levels,a1_mastered,a2_mastered,a3_mastered,total_mastered,xp,rp,pvp_wins,pvp_losses,best_time_sec,last_active_at,updated_at';
+      // Study group comes in the same request (joined table), so groups cost no extra calls
+      let [{ data: accs, error: accErr }, { data: cfg }] = await Promise.all([
+        sb.from('accounts').select(cols + ',group_id,study_groups(id,name,school,leader_id)'),
         sb.from('app_config').select('value').eq('key', 'launch_promo').maybeSingle()
       ]);
+      // Before supabase-study-groups.sql is run the join fails: fall back to the plain list
+      if (accErr) ({ data: accs, error: accErr } = await sb.from('accounts').select(cols));
       if (accErr) return okRes({ error: accErr.message }, 500);
 
       const nowMs = Date.now();
@@ -106,7 +110,8 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
         pvpLosses: a.pvp_losses || 0,
         bestTimeSec: a.best_time_sec ?? null,
         lastActiveAt: a.last_active_at || 0,
-        updatedAt: a.updated_at || 0
+        updatedAt: a.updated_at || 0,
+        group: a.study_groups ? { id: a.study_groups.id, name: a.study_groups.name, school: a.study_groups.school || '', leaderId: a.study_groups.leader_id } : null
       }));
 
       // Owners stay off the public boards so reviewees compete among themselves
@@ -140,6 +145,14 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
 
     // POST actions
     const action = body?.action || 'sync';
+
+    // STUDY GROUPS: one-off writes only
+    if (action === 'group_create') return out(await callRpc('bayaw_group_create', { p_name: String(body.name || ''), p_school: String(body.school || '') }));
+    if (action === 'group_join') return out(await callRpc('bayaw_group_join', { p_code: String(body.code || '') }));
+    if (action === 'group_leave') return out(await callRpc('bayaw_group_leave', {}));
+    if (action === 'group_kick') return out(await callRpc('bayaw_group_kick', { p_member: String(body.memberId || '') }));
+    if (action === 'group_code') return out(await callRpc('bayaw_group_code', {}));
+    if (action === 'group_delete') return out(await callRpc('bayaw_group_delete', { p_pass: adminPasscode || '', p_group: String(body.groupId || '') }));
 
     // 1. GLOBAL CHAT
     if (action === 'chat_list') {
