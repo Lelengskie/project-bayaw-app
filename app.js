@@ -894,7 +894,7 @@ class AgriBoardApp {
   }
 
   showView(viewName) {
-    const views = ['home', 'dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'progress', 'weak', 'groups', 'admin', 'mock-exam'];
+    const views = ['home', 'dashboard', 'pvp-lobby', 'pvp-arena', 'leaderboards', 'vault', 'paes', 'progress', 'weak', 'groups', 'admin', 'mock-exam'];
     views.forEach(v => {
       const el = document.getElementById(`view-${v}`);
       if (el) el.classList.add('hidden');
@@ -909,7 +909,8 @@ class AgriBoardApp {
     document.querySelectorAll('.tabbar-btn[data-view]').forEach(b => b.classList.toggle('is-active', b.dataset.view === tabView));
 
     if (viewName === 'leaderboards') this.renderLeaderboards();
-    if (viewName === 'vault') this.renderVault();
+    if (viewName === 'vault') { this.vaultIds = null; this.renderVault(); }
+    if (viewName === 'paes') this.renderPaes();
     if (viewName === 'progress') this.renderAllLevelsProgress();
     if (viewName === 'weak') this.renderWeakTopics();
     if (viewName === 'groups') this.renderGroupView();
@@ -2553,7 +2554,9 @@ class AgriBoardApp {
     document.getElementById('vault-stat-ps').textContent = all.filter(it => it.category === 'problem_solving').length.toLocaleString();
     document.getElementById('vault-stat-mastered').textContent = all.filter(it => this.user.srs[it.id]?.status === 'mastered').length.toLocaleString();
 
+    const only = this.vaultIds; // set by the PAES Vault "Practice" button
     const filtered = all.filter(it => {
+      if (only && !only.ids.has(it.id)) return false;
       if (areaF !== 'all' && String(it.area) !== areaF) return false;
       if (catF !== 'all' && it.category !== catF) return false;
       if (statusF !== 'all') {
@@ -2564,7 +2567,8 @@ class AgriBoardApp {
     });
     const limit = this.vaultLimit || 40;
     const slice = filtered.slice(0, limit);
-    document.getElementById('vault-result-count').textContent = `${filtered.length.toLocaleString()} question${filtered.length === 1 ? '' : 's'}${raw ? ` matching "${raw}"` : ''}`;
+    document.getElementById('vault-result-count').innerHTML = this.escapeHtml(`${filtered.length.toLocaleString()} question${filtered.length === 1 ? '' : 's'}${only ? ` citing ${only.label}` : ''}${raw ? ` matching "${raw}"` : ''}`)
+      + (only ? ` <button onclick="app.vaultIds = null; app.renderVault()" class="paes-ed !ml-2 align-middle"><svg class="ic !w-3.5 !h-3.5" aria-hidden="true"><use href="#i-x"/></svg>Show all questions</button>` : '');
 
     const esc = (s) => this.escapeHtml(s || '');
     // Escape first, then mark matches (the search text is escaped the same way so it still lines up)
@@ -2610,10 +2614,174 @@ class AgriBoardApp {
   }
 
   resetVault() {
+    this.vaultIds = null;
     document.getElementById('vault-search-input').value = '';
     document.getElementById('vault-filter-cat').value = 'all';
     this.vaultArea = 'all';
     this.setVaultFilter('status', 'all');
+  }
+
+  // ==================== PAES VAULT ====================
+  // paes.json is built from the AMTEC (2000-2017) and BAFS (2017-2026) lists by site-tools/build_paes.py.
+  // Saves and read marks stay on this device (localStorage), so this page makes no Supabase calls.
+  async loadPaes() {
+    if (this.paes) return this.paes;
+    try {
+      const res = await fetch('./paes.json?v=20261206b');
+      if (!res.ok) throw new Error(res.status);
+      this.paes = await res.json();
+    } catch (e) {
+      document.getElementById('paes-list').innerHTML = `
+        <div class="panel py-9 px-4 text-center">
+          <h2 class="font-serif !font-normal text-[22px]">Couldn't load the PAES list</h2>
+          <p class="text-sm text-slate-400 mt-1 mb-4">Check your connection, then try again.</p>
+          <button onclick="app.renderPaes()" class="min-h-[40px] px-3.5 rounded-[10px] border border-rule bg-surface text-[13.5px] font-semibold hover:border-emerald-500">Try again</button>
+        </div>`;
+      return null;
+    }
+    this.paesById = Object.fromEntries(this.paes.map(p => [p.id, p]));
+    return this.paes;
+  }
+
+  paesMarks() {
+    if (!this._paesMarks) {
+      let m = {};
+      try { m = JSON.parse(localStorage.getItem('bayaw-paes') || '{}'); } catch (e) { m = {}; }
+      this._paesMarks = { saved: new Set(m.saved || []), read: new Set(m.read || []) };
+    }
+    return this._paesMarks;
+  }
+
+  paesMark(kind, id) {
+    const m = this.paesMarks();
+    if (m[kind].has(id)) m[kind].delete(id); else m[kind].add(id);
+    try { localStorage.setItem('bayaw-paes', JSON.stringify({ saved: [...m.saved], read: [...m.read] })); } catch (e) { /* private mode: marks last until reload */ }
+    this.renderPaes(true);
+  }
+
+  setPaesFilter(key, value) {
+    if (key === 'topic') this.paesTopic = value;
+    else if (key === 'sort') this.paesSort = value;
+    else this.paesOn = { ...this.paesOn, [key]: !this.paesOn?.[key] };
+    document.querySelectorAll('[data-paes-topic]').forEach(b => b.classList.toggle('on', b.dataset.paesTopic === (this.paesTopic || 'all')));
+    ['asked', 'saved', 'old'].forEach(k => document.getElementById(`paes-${k}`)?.setAttribute('aria-pressed', !!this.paesOn?.[k]));
+    this.renderPaes();
+  }
+
+  paesTry(btn) {
+    document.getElementById('paes-search-input').value = btn.textContent;
+    this.renderPaes();
+  }
+
+  paesMore() {
+    this.paesLimit = (this.paesLimit || 40) + 40;
+    this.renderPaes(true);
+  }
+
+  // Jump to another edition of the same standard
+  paesGo(id) {
+    const p = this.paesById?.[id];
+    if (!p) return;
+    if (p.old && !this.paesOn?.old) this.setPaesFilter('old');
+    document.getElementById('paes-search-input').value = p.code;
+    this.renderPaes();
+    document.getElementById('paes-result-count')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Open the Question Vault on the questions that cite this standard
+  paesPractice(id) {
+    const p = this.paesById?.[id];
+    if (!p?.qs) return;
+    this.showView('vault');
+    this.resetVault();
+    this.vaultIds = { ids: new Set(p.qs), label: p.code };
+    this.renderVault();
+    window.scrollTo({ top: 0 });
+  }
+
+  resetPaes() {
+    document.getElementById('paes-search-input').value = '';
+    this.paesOn = {};
+    this.setPaesFilter('topic', 'all');
+  }
+
+  async renderPaes(keepPlace = false) {
+    const all = await this.loadPaes();
+    if (!all) return;
+    const raw = (document.getElementById('paes-search-input').value || '').trim();
+    // "PAES 610", "pns/bafs 289" and "610" all search the number
+    const q = raw.toLowerCase().replace(/^(pns\s*\/?\s*)?(bafs\s*\/?\s*)?paes[\s:]*/, '').trim();
+    const on = this.paesOn || {}, topic = this.paesTopic || 'all', sort = this.paesSort || 'asked';
+    const marks = this.paesMarks();
+    if (!keepPlace) this.paesLimit = 40;
+    document.getElementById('paes-clear')?.classList.toggle('hidden', !raw);
+
+    const current = all.filter(p => !p.old);
+    document.getElementById('paes-stat-total').textContent = current.length.toLocaleString();
+    document.getElementById('paes-stat-asked').textContent = current.filter(p => p.q).length.toLocaleString();
+    document.getElementById('paes-stat-saved').textContent = marks.saved.size.toLocaleString();
+
+    const prevCodes = (p) => (p.prev || []).map(id => this.paesById[id]?.code || '').join(' ');
+    const filtered = all.filter(p => {
+      if (p.old && !on.old) return false;
+      if (topic !== 'all' && p.topic !== topic) return false;
+      if (on.asked && !p.q) return false;
+      if (on.saved && !marks.saved.has(p.id)) return false;
+      return !q || `${p.code} ${p.t} ${p.grp || ''} ${p.aka || ''} ${prevCodes(p)}`.toLowerCase().includes(q);
+    });
+    const byNum = (a, b) => a.num.localeCompare(b.num, undefined, { numeric: true }) || a.yr - b.yr;
+    filtered.sort(sort === 'num' ? byNum : sort === 'new' ? (a, b) => b.yr - a.yr || byNum(a, b) : (a, b) => b.q - a.q || byNum(a, b));
+    const limit = this.paesLimit || 40;
+    const slice = filtered.slice(0, limit);
+    document.getElementById('paes-result-count').textContent = `${filtered.length.toLocaleString()} standard${filtered.length === 1 ? '' : 's'}${raw ? ` matching "${raw}"` : ''}`;
+
+    const esc = (s) => this.escapeHtml(s || '');
+    const re = q ? new RegExp(`(${esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig') : null;
+    const hl = (s) => re ? esc(s).replace(re, '<mark class="vault-mark">$1</mark>') : esc(s);
+    const tint = { mach: 'rgb(var(--c-inkblue-400))', post: 'var(--gold)', struct: 'rgb(var(--c-plum-400))', sw: 'rgb(var(--c-green-400))', other: 'var(--muted)' };
+    const tname = { mach: 'MACHINERY', post: 'POSTHARVEST', struct: 'STRUCTURES', sw: 'SOIL &amp; WATER', other: 'GENERAL' };
+    const btn = 'min-h-[40px] px-3.5 rounded-[10px] border border-rule text-[13.5px] font-semibold inline-flex items-center justify-center gap-2';
+    const edBtn = (id, label) => `<button onclick="app.paesGo('${id}')" class="paes-ed">${hl(this.paesById[id]?.code || id)}${label ? ` <small>${label}</small>` : ''}</button>`;
+
+    document.getElementById('paes-list').innerHTML = slice.map((p, i) => {
+      const saved = marks.saved.has(p.id), read = marks.read.has(p.id);
+      const eds = [
+        p.aka ? `<span class="paes-ed paes-aka">${hl(p.aka)} <small>same standard, earlier number</small></span>` : '',
+        p.by ? `Replaced by ${edBtn(p.by)}` : '',
+        !p.by && p.prev?.length ? `Replaces ${p.prev.map(id => edBtn(id)).join('')}` : '',
+        ...(p.files || []).map(([label, url]) => `<a class="paes-ed" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`),
+      ].filter(Boolean).join('');
+      return `<article class="panel vault-card" style="animation-delay:${Math.min(i, 12) * 25}ms">
+        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-slate-400">
+          <span class="font-mono text-[13px] text-white">${hl(p.code)}</span>
+          ${p.old ? '<span class="paes-tag paes-old">OLDER EDITION</span>' : '<span class="paes-tag paes-cur">CURRENT</span>'}
+          <span class="vault-atag" style="color:${tint[p.topic]}">${tname[p.topic]}</span>
+          ${p.q >= 10 ? '<span class="vault-ps">MOST ASKED</span>' : ''}
+        </div>
+        <h3 class="font-serif !font-normal text-[18px] sm:text-[19px] leading-snug text-white mt-2 mb-1">${hl(p.t)}</h3>
+        <p class="text-[13px] text-slate-400 mb-2.5">${p.grp ? esc(p.grp) + ' · ' : ''}${p.src === 'AMTEC' ? esc(p.vol) + ' · ' : ''}from ${p.src}</p>
+        ${eds ? `<div class="flex flex-wrap items-center gap-1.5 text-[12.5px] text-slate-400 mb-3">${eds}</div>` : ''}
+        <div class="vault-ans paes-actions">
+          ${p.url
+            ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" class="${btn} !border-transparent bg-emerald-600 hover:bg-emerald-700 text-on-accent"><svg class="ic" aria-hidden="true"><use href="#i-file-text"/></svg> Open PDF</a>`
+            : '<span class="text-[13px] text-slate-400">PDF not available online</span>'}
+          ${p.q
+            ? `<button onclick="app.paesPractice('${p.id}')" class="${btn} bg-surface hover:border-emerald-500"><svg class="ic" aria-hidden="true"><use href="#i-book-open"/></svg> Practice ${p.q} question${p.q === 1 ? '' : 's'}</button>`
+            : (p.old ? '' : '<span class="paes-qnone">Not in our questions yet</span>')}
+          <span class="paes-spacer"></span>
+          <button onclick="app.paesMark('read', '${p.id}')" aria-pressed="${read}" class="${btn} paes-read bg-surface hover:border-emerald-500"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> ${read ? 'Read' : 'Mark read'}</button>
+          <button onclick="app.paesMark('saved', '${p.id}')" aria-pressed="${saved}" aria-label="${saved ? 'Remove from saved' : 'Save'}" class="${btn} paes-save !px-0 w-10 bg-surface hover:border-emerald-500"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
+        </div>
+      </article>`;
+    }).join('') + (filtered.length > limit
+      ? `<div class="grid place-items-center gap-1.5 pt-2 text-[12.5px] text-slate-400"><button onclick="app.paesMore()" class="${btn} bg-surface hover:border-emerald-500">Show 40 more</button><span>Showing ${slice.length.toLocaleString()} of ${filtered.length.toLocaleString()}</span></div>`
+      : '') || `
+      <div class="panel py-9 px-4 text-center">
+        <svg class="ic !w-7 !h-7 text-slate-400" aria-hidden="true"><use href="#i-search"/></svg>
+        <h2 class="font-serif !font-normal text-[22px] mt-2">No standard matches${raw ? ` "${esc(raw)}"` : ''}</h2>
+        <p class="text-sm text-slate-400 mt-1 mb-4">${on.saved && !marks.saved.size ? 'You haven\'t saved any standards yet. Tap the bookmark on one to keep it here.' : 'Try only the number, like 419, or a machine name.'}</p>
+        <button onclick="app.resetPaes()" class="${btn} bg-surface hover:border-emerald-500">Reset filters</button>
+      </div>`;
   }
 
   jumpFromVault(areaId, levelNum, itemId) {
