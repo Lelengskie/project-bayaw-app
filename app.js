@@ -2393,13 +2393,84 @@ class AgriBoardApp {
 
     const sideProg = document.getElementById('side-lb-prog-body');
     const sidePvp = document.getElementById('side-lb-pvp-body');
-    const fullProg = document.getElementById('full-lb-prog-body');
-    const fullPvp = document.getElementById('full-lb-pvp-body');
 
     if (sideProg) sideProg.innerHTML = progRowsHtml;
     if (sidePvp) sidePvp.innerHTML = pvpRowsHtml;
-    if (fullProg) fullProg.innerHTML = progRowsHtml;
-    if (fullPvp) fullPvp.innerHTML = pvpRowsHtml;
+    this.renderFullBoard(progPlayers, pvpPlayers);
+  }
+
+  setLbView(key, value) {
+    if (key === 'board') this.lbBoard = value; else this.lbFilter = value;
+    document.querySelectorAll('[data-lb-board]').forEach(b => b.classList.toggle('on', b.dataset.lbBoard === (this.lbBoard || 'prog')));
+    document.querySelectorAll('[data-lb-filter]').forEach(b => b.classList.toggle('on', b.dataset.lbFilter === (this.lbFilter || 'all')));
+    this.renderLeaderboards();
+  }
+
+  // Full Leaderboards page: podium, your position, one board at a time
+  renderFullBoard(progPlayers, pvpPlayers) {
+    const el = document.getElementById('lb-board');
+    if (!el) return;
+    const esc = (s) => this.escapeHtml(s);
+    const board = this.lbBoard || 'prog', filter = this.lbFilter || 'all';
+    const isOnline = (p) => p.isUser || (!!p.lastActiveAt && Date.now() - p.lastActiveAt <= 180000);
+    const ranked = (board === 'prog' ? progPlayers : pvpPlayers).map((p, i) => ({ ...p, rank: i + 1 }));
+    const me = ranked.find(p => p.isUser);
+    const first = (p) => esc(String(p.name || 'Reviewee').split(' ')[0]);
+    const primary = 'min-h-[44px] px-4 rounded-[10px] bg-emerald-600 hover:bg-emerald-700 text-on-accent text-sm font-semibold inline-flex items-center gap-2';
+    const action = board === 'prog' ? `<button onclick="app.continueStudying()" class="${primary}">Continue studying</button>` : `<button onclick="app.openPvpLobby()" class="${primary}">Find a match</button>`;
+
+    const others = (this.liveLeaderboard.allUsers || []).filter(u => !u.isOwner && u.id !== this.user.id);
+    document.getElementById('lb-stat-total').textContent = (this.liveLeaderboard.totalReviewees || ranked.length).toLocaleString();
+    document.getElementById('lb-stat-online').textContent = others.filter(isOnline).length + (this.user.loggedIn && !this.user.isOwner ? 1 : 0);
+    document.getElementById('lb-stat-rank').textContent = me ? `#${me.rank}` : '—';
+
+    if (!ranked.length) {
+      el.innerHTML = `<div class="panel py-9 px-4 text-center"><svg class="ic !w-7 !h-7 text-slate-400" aria-hidden="true"><use href="#i-${board === 'prog' ? 'trophy' : 'swords'}"/></svg>
+        <h2 class="font-serif !font-normal text-[24px] mt-2">${board === 'prog' ? 'No one on the board yet' : 'No PvP matches yet'}</h2>
+        <p class="text-sm text-slate-400 mt-1 mb-4 mx-auto max-w-[38ch]">${board === 'prog' ? 'Master your first questions and you take the #1 spot.' : 'Finish one 1v1 match to put your name on the PvP board.'}</p>${action}</div>`;
+      return;
+    }
+
+    const av = (p) => `<span class="lb-av ${p.isUser ? 'me' : ''}">${esc(String(p.name || '?')[0].toUpperCase())}</span>`;
+    const metric = (p) => board === 'prog' ? [(p.totalMastered || 0).toLocaleString(), 'mastered'] : [`${p.pvpWins || 0}W – ${p.pvpLosses || 0}L`, `${(p.rp || 1200).toLocaleString()} RP`];
+    let html = '';
+    if (filter === 'all' && ranked.length >= 3) {
+      html += `<div class="lb-podium">${[ranked[1], ranked[0], ranked[2]].map(p => `<div class="panel lb-pod p${p.rank}">${p.rank === 1 ? '<svg class="ic crown" aria-hidden="true"><use href="#i-crown"/></svg>' : ''}
+          <div class="place">${['', '1ST', '2ND', '3RD'][p.rank]}</div>${av(p)}<div class="nm">${first(p)}</div><div class="big">${metric(p)[0]}</div><div class="text-[11.5px] text-slate-400">${metric(p)[1]}</div></div>`).join('')}</div>`;
+    }
+    if (me && filter === 'all') {
+      const above = ranked[me.rank - 2];
+      let gap = 'You are #1. Keep it.';
+      if (above && board === 'prog') {
+        const need = (above.totalMastered || 0) - (me.totalMastered || 0) + 1;
+        gap = need > 0 ? `<b class="font-semibold">${need.toLocaleString()} more mastered</b> to pass ${first(above)} for #${above.rank}.` : `Earn more XP to pass ${first(above)} for #${above.rank}.`;
+      } else if (above) {
+        const need = Math.max(1, (above.pvpWins || 0) - (me.pvpWins || 0) + 1);
+        gap = `<b class="font-semibold">${need} more win${need === 1 ? '' : 's'}</b> to pass ${first(above)} for #${above.rank}.`;
+      }
+      html += `<div class="panel lb-you"><span class="rk">#${me.rank}</span><div class="flex-1 min-w-[200px] text-sm"><div class="label-mono mb-0.5">Your position</div>${gap}</div>${action}</div>`;
+    }
+    const shown = filter === 'online' ? ranked.filter(isOnline) : ranked;
+    const maxLv = [13, 13, 22], tint = ['inkblue-400', 'green-400', 'plum-400'];
+    const rows = shown.map((p, i) => {
+      const who = `<div class="lb-who">${av(p)}<div class="min-w-0"><div class="nm"><span>${esc(p.name || 'Reviewee')}${p.isUser ? ' <span class="font-normal text-slate-400">(you)</span>' : ''}</span>${this.renderTitleBadge(p).replace('ml-1 ', '')}</div><div class="flex">${this.renderLastSeen(p)}</div></div></div>`;
+      const delay = `style="animation-delay:${Math.min(i, 20) * 30}ms"`;
+      if (board === 'prog') {
+        const lv = [p.a1Levels, p.a2Levels, p.a3Levels].map(v => v || 0);
+        return `<div class="lb-row ${p.isUser ? 'me' : ''}" ${delay}><span class="lb-rn">${p.rank}</span>${who}
+          <div class="lb-wide grid gap-1">${lv.map((v, k) => `<div class="lb-ar"><span>A${k + 1}</span><i><b style="width:${Math.min(100, v / maxLv[k] * 100)}%; background:rgb(var(--c-${tint[k]}))"></b></i><em>${v}</em></div>`).join('')}</div>
+          <div class="lb-num">${(p.totalMastered || 0).toLocaleString()}</div><div class="lb-num">${(p.xp || 0).toLocaleString()}</div></div>`;
+      }
+      const w = p.pvpWins || 0, l = p.pvpLosses || 0, pct = w + l ? Math.round(w / (w + l) * 100) : 0;
+      return `<div class="lb-row ${p.isUser ? 'me' : ''}" ${delay}><span class="lb-rn">${p.rank}</span>${who}
+        <div><span class="lb-wl"><span class="text-emerald-300">${w}W</span> <span class="text-slate-400">–</span> <span class="text-rose-300">${l}L</span> <span class="lb-pct text-slate-400 text-[11px]">· ${pct}%</span></span><span class="lb-wlbar"><b style="width:${pct}%"></b></span></div>
+        <div class="lb-num">${(p.rp || 1200).toLocaleString()}</div><div class="lb-num lb-best">${p.bestTimeSec ? Number(p.bestTimeSec).toFixed(1) + 's' : '—'}</div></div>`;
+    }).join('');
+    const head = board === 'prog'
+      ? '<div class="lb-lhead"><span>#</span><span>Reviewee</span><span class="lb-wide">Levels by area</span><span class="text-right">Mastered</span><span class="text-right">XP</span></div>'
+      : '<div class="lb-lhead"><span>#</span><span>Duelist</span><span>Record</span><span class="text-right">RP</span><span class="text-right lb-best">Best</span></div>';
+    html += `<div class="panel lb-list ${board === 'prog' ? 'lb-prog' : 'lb-pvp'}">${head}${rows || '<p class="py-5 px-1 text-sm text-slate-400">No one else is online right now.</p>'}</div>`;
+    el.innerHTML = html;
   }
 
   // ==================== QUESTION VAULT & ALL LEVELS PROGRESS ====================
