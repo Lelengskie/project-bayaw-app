@@ -913,6 +913,7 @@ class AgriBoardApp {
     if (viewName === 'progress') this.renderAllLevelsProgress();
     if (viewName === 'weak') this.renderWeakTopics();
     if (viewName === 'groups') this.renderGroupView();
+    if (viewName === 'dashboard') this.applyTabletMode(this.currentDeck?.[this.currentCardIdx]);
     if (viewName === 'home') { this.renderHome(); this.maybePlayHomeIntro(); }
   }
 
@@ -1464,7 +1465,8 @@ class AgriBoardApp {
   toggleTabletMode() {
     this.tabletMode = !this.isTabletModeOn();
     try { localStorage.setItem('bayaw-tablet-mode', this.tabletMode ? '1' : '0'); } catch (e) {}
-    this.applyTabletMode(this.currentDeck?.[this.currentCardIdx]);
+    if (!document.getElementById('view-mock-exam')?.classList.contains('hidden')) window.bayawMock?.applyTablet();
+    else this.applyTabletMode(this.currentDeck?.[this.currentCardIdx]);
   }
 
   isTabletModeOn() {

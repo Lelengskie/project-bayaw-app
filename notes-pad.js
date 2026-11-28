@@ -8,8 +8,8 @@
   const canFolder = typeof window.showDirectoryPicker === 'function';
   const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 
-  let root, cv, ctx, board, built = false, visible = false;
-  let cardId = null, page = { strokes: [], redo: [] }, cur = null;
+  let root = null, cv, ctx, board, built = false, inited = false, visible = false;
+  let cardId = null, label = '', file = '', page = { strokes: [], redo: [] }, cur = null;
   let tool = 'pen', size = 4, color = 0, penOnly = ls('bayaw-pen-only') === '1';
   let dir = null, dirOk = false, saveTimer = null, clearArmed = null;
 
@@ -105,14 +105,22 @@
       else await run('pages', 'readwrite', s => s.delete(id));
       prune();
     } catch (e) { setStatus('Could not save notes on this device.'); }
-    if (dirOk && snap.strokes.length && id === cardId) writeToFolder(id).catch(() => { dirOk = false; setStatus(); });
+    if (dirOk && snap.strokes.length && id === cardId) writeToFolder().catch(() => { dirOk = false; setStatus(); });
   }
   async function prune() {
     const keys = await run('pages', 'readonly', s => s.getAllKeys());
-    if (keys.length <= KEEP) return;
     const vals = await run('pages', 'readonly', s => s.getAll());
-    const old = keys.map((k, i) => [k, vals[i].updated || 0]).sort((a, b) => a[1] - b[1]).slice(0, keys.length - KEEP);
+    // Mock exam pages are cleared when the next mock starts, so only study pages count toward the limit
+    const study = keys.map((k, i) => [k, vals[i].updated || 0]).filter(([k]) => !String(k).startsWith('mock:'));
+    if (study.length <= KEEP) return;
+    const old = study.sort((a, b) => a[1] - b[1]).slice(0, study.length - KEEP);
     await run('pages', 'readwrite', s => { old.forEach(([k]) => s.delete(k)); return null; });
+  }
+  async function clearPrefix(prefix) {
+    try {
+      const keys = await run('pages', 'readonly', s => s.getAllKeys());
+      await run('pages', 'readwrite', s => { keys.filter(k => String(k).startsWith(prefix)).forEach(k => s.delete(k)); return null; });
+    } catch (e) {}
   }
   function flush() {
     if (!saveTimer) return;
@@ -140,17 +148,17 @@
     c.drawImage(layer, 0, 0, w, h);
     c.fillStyle = `rgb(${cs.getPropertyValue('--c-ink-400').trim()})`;
     c.font = '500 11px "IBM Plex Mono", monospace';
-    c.fillText(`PROJECT BAYAW · PROBLEM ${cardId}`, 12, h - 12);
+    c.fillText(`PROJECT BAYAW · ${label}`, 12, h - 12);
     return new Promise(res => out.toBlob(res, 'image/png'));
   }
-  const fileName = (id) => `bayaw-notes-${String(id).replace(/[^\w-]+/g, '_')}.png`;
+  const fileName = () => `bayaw-notes-${String(file).replace(/[^\w-]+/g, '_')}.png`;
 
   async function saveImage() {
     if (!page.strokes.length) return;
     const blob = await snapshot();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = fileName(cardId);
+    a.download = fileName();
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
@@ -176,11 +184,11 @@
       await run('meta', 'readwrite', s => s.put(dir, 'dir'));
     }
     setStatus();
-    if (dirOk && page.strokes.length) writeToFolder(cardId).catch(() => {});
+    if (dirOk && page.strokes.length) writeToFolder().catch(() => {});
   }
-  async function writeToFolder(id) {
+  async function writeToFolder() {
     const blob = await snapshot();
-    const fh = await dir.getFileHandle(fileName(id), { create: true });
+    const fh = await dir.getFileHandle(fileName(), { create: true });
     const wr = await fh.createWritable();
     await wr.write(blob); await wr.close();
   }
@@ -204,8 +212,9 @@
   }
   const icon = (id) => `<svg class="ic" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
-  function build() {
-    root = document.getElementById('study-notes');
+  function build(el) {
+    if (root && root !== el) { root.innerHTML = ''; root.classList.add('hidden'); }
+    root = el;
     root.innerHTML = `
       <div class="notes-bar" role="toolbar" aria-label="Pen tools">
         <button class="notes-tool on" data-tool="pen" aria-label="Pen" title="Pen">${icon('pen')}</button>
@@ -272,17 +281,21 @@
     };
     cv.addEventListener('pointerup', end);
     cv.addEventListener('pointercancel', end);
+    new ResizeObserver(fit).observe(board);
+    built = true;
+    paintSwatches();
+    setStatus();
+    if (inited) return;
 
+    // once per page load
+    inited = true;
     document.addEventListener('keydown', (e) => {
       if (!visible || !(e.ctrlKey || e.metaKey) || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
       const k = e.key.toLowerCase();
       if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
       else if (k === 'y') { e.preventDefault(); redo(); }
     });
-    new ResizeObserver(fit).observe(board);
     new MutationObserver(() => { paintSwatches(); redraw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    built = true;
-    paintSwatches();
     restoreFolder();
     // Ask the browser not to clean up the notes on its own (no pop-up on most browsers)
     if (!ls('bayaw-notes-persist') && navigator.storage?.persist) { navigator.storage.persist().catch(() => {}); ls('bayaw-notes-persist', '1'); }
@@ -302,13 +315,18 @@
     clearArmed = setTimeout(() => { clearArmed = null; btn.classList.remove('armed'); btn.title = 'Clear page'; }, 2500);
   }
 
-  async function open(id) {
-    if (!built) build();
+  // open(key, { root: element id, label: printed on saved images, file: image file name })
+  async function open(id, opts = {}) {
+    const el = document.getElementById(opts.root || 'study-notes');
+    if (!el) return;
+    if (root !== el) { flush(); build(el); cardId = null; }
     visible = true;
     root.classList.remove('hidden');
     if (id === cardId) { fit(); return; }
     flush();
     cardId = id;
+    label = opts.label || `PROBLEM ${id}`;
+    file = opts.file || id;
     page = { strokes: [], redo: [] };
     fit();
     try {
@@ -316,12 +334,13 @@
       if (cardId === id && saved) { page = { strokes: saved.strokes || [], redo: [] }; redraw(); }
     } catch (e) { setStatus('Notes cannot be saved in this browser window.'); }
   }
-  function close() {
-    if (!built) return;
+  // close(rootId) only closes that screen's pad, so Study and Mock Exam don't close each other
+  function close(rootId = 'study-notes') {
+    if (!root || root.id !== rootId) return;
     flush();
     visible = false;
     root.classList.add('hidden');
   }
 
-  window.bayawNotes = { open, close };
+  window.bayawNotes = { open, close, clearPrefix };
 })();

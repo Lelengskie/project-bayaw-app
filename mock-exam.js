@@ -177,6 +177,7 @@
     async openLobby() {
       this.loadLocalState();
       this.stopTimer();
+      window.bayawNotes?.close('mock-notes');
       window.app.showView('mock-exam');
       document.getElementById('mock-lobby-panel')?.classList.remove('hidden');
       document.getElementById('mock-arena-panel')?.classList.add('hidden');
@@ -544,6 +545,7 @@
       };
       this.paused = false;
       this.saveLocalSession();
+      window.bayawNotes?.clearPrefix('mock:'); // fresh scratch paper for a new exam
       this.enterArena();
     },
 
@@ -632,9 +634,29 @@
       return window.app?.allItemsFlat?.find(x => x.id === id) || null;
     },
 
+    // Tablet mode (shared setting with Problem Solving): answer sheet moves under the question, scratch paper on the right
+    applyTablet() {
+      const s = this.activeSession;
+      const on = !!s && !!window.app?.isTabletModeOn() && !document.getElementById('mock-arena-panel')?.classList.contains('hidden');
+      document.getElementById('mock-stage')?.classList.toggle('tablet-on', on);
+      const btn = document.getElementById('mock-tablet-btn');
+      if (btn) {
+        btn.setAttribute('aria-pressed', on);
+        btn.querySelector('span').textContent = on ? 'Exit tablet mode' : 'Tablet mode';
+      }
+      if (!on) { window.bayawNotes?.close('mock-notes'); return; }
+      const day = new Date(s.startedAt || Date.now()).toISOString().slice(0, 10);
+      window.bayawNotes?.open(`mock:${s.startedAt}:${s.idx}`, {
+        root: 'mock-notes',
+        label: `MOCK EXAM AREA ${s.areaId} · QUESTION ${s.idx + 1}`,
+        file: `mock-${day}-area${s.areaId}-q${s.idx + 1}`
+      });
+    },
+
     renderArenaQuestion() {
       const s = this.activeSession;
       if (!s) return;
+      this.applyTablet();
       const qObj = s.items[s.idx];
       const dbItem = this.getDbItemById(qObj.id);
       if (!dbItem) return;
@@ -869,6 +891,7 @@
 
     renderResults() {
       document.getElementById('mock-lobby-panel')?.classList.add('hidden');
+      window.bayawNotes?.close('mock-notes');
       document.getElementById('mock-arena-panel')?.classList.add('hidden');
       document.getElementById('mock-results-panel')?.classList.remove('hidden');
 
