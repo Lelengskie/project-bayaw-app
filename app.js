@@ -1460,6 +1460,32 @@ class AgriBoardApp {
     this.selectStudyLevel(this.activeStudyArea || 1, this.activeStudyLevel || 1);
   }
 
+  // Tablet mode: Problem Solving only. Hides the right column and shows scratch paper (notes-pad.js).
+  toggleTabletMode() {
+    this.tabletMode = !this.isTabletModeOn();
+    try { localStorage.setItem('bayaw-tablet-mode', this.tabletMode ? '1' : '0'); } catch (e) {}
+    this.applyTabletMode(this.currentDeck?.[this.currentCardIdx]);
+  }
+
+  isTabletModeOn() {
+    if (this.tabletMode === undefined) {
+      try { this.tabletMode = localStorage.getItem('bayaw-tablet-mode') === '1'; } catch (e) { this.tabletMode = false; }
+    }
+    return this.tabletMode;
+  }
+
+  applyTabletMode(card) {
+    const on = this.problemSolvingOnly && this.isTabletModeOn() && !!card;
+    document.getElementById('study-stage')?.classList.toggle('tablet-on', on);
+    const btn = document.getElementById('btn-tablet-mode');
+    if (btn) {
+      btn.setAttribute('aria-pressed', on);
+      btn.querySelector('span').textContent = on ? 'Exit tablet mode' : 'Tablet mode';
+    }
+    if (on) window.bayawNotes?.open(card.id);
+    else window.bayawNotes?.close();
+  }
+
   setStudyStyle(style) {
     this.studyStyle = style;
     const mcqBtn = document.getElementById('mode-btn-mcq');
@@ -1517,6 +1543,7 @@ class AgriBoardApp {
     document.getElementById('study-area-pill').textContent = this.problemSolvingOnly ? `Area ${card.area} • Math` : `Area ${card.area}`;
     document.getElementById('study-id-pill').textContent = `#${card.index} (${card.id})`;
     document.getElementById('study-question-text').textContent = card.question;
+    this.applyTabletMode(card);
 
     // SRS next review status (show live Anki countdown if in learning!)
     const rec = this.user.srs[card.id];
