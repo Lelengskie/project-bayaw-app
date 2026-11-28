@@ -2953,46 +2953,71 @@ class AgriBoardApp {
     this.scrollToStudySession();
   }
 
+  // Progress & Stats page: reads only the progress saved on this device (user.srs), no Supabase calls
   renderAllLevelsProgress() {
     const grid = document.getElementById('all-levels-progress-grid');
-    let html = '';
-    for (const area of this.db.areas) {
-      const regItems = this.getRegularItems(area.id);
-      const regLevels = Math.ceil(regItems.length / 100);
-      for (let lvl = 1; lvl <= regLevels; lvl++) {
-        const lst = this.getLevelStats(area.id, lvl);
-        const start = (lvl - 1) * 100 + 1;
-        const end = Math.min(lvl * 100, regItems.length);
-        html += `
-          <div onclick="app.showView('dashboard'); app.selectStudyLevel(${area.id}, ${lvl});" class="panel p-3.5 cursor-pointer hover:border-sky-400 transition-all space-y-2">
-            <div class="flex justify-between text-xs font-extrabold">
-              <span class="text-white">Area ${area.id} • Level ${lvl}</span>
-              <span class="font-mono text-sky-300">${lst.pct.toFixed(0)}%</span>
-            </div>
-            <div class="text-xs font-mono text-slate-400">Items ${start} – ${end} (${lst.mastered}/${lst.total})</div>
-            <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
-              <div class="h-full bg-sky-500 rounded-full" style="width: ${lst.pct}%"></div>
-            </div>
-          </div>
-        `;
+    if (!grid || !this.db) return;
+    const fmt = (n) => n.toLocaleString();
+    const w = (n, t) => (t ? (n / t * 100).toFixed(2) : 0) + '%';
+    const d = this.dailyState();
+    const curA = d.lastArea || 1, curL = d.lastLevel || 1;
+    let M = 0, L = 0, T = 0, done = 0, levels = 0, cur = null;
+    const bar = (m, l, t, cls) => `<span class="${cls}" aria-hidden="true"><i class="m" style="width:${w(m, t)}"></i><i class="l" style="width:${w(l, t)}"></i></span>`;
+
+    const areasHtml = this.db.areas.map(area => {
+      const n = this.getRegularTotalLevels(area.id);
+      let am = 0, al = 0, at = 0, tiles = '';
+      for (let lvl = 1; lvl <= n; lvl++) {
+        const st = this.getLevelStats(area.id, lvl);
+        am += st.mastered; al += st.learning; at += st.total; levels++;
+        const isDone = st.total > 0 && st.mastered === st.total;
+        if (isDone) done++;
+        const isCur = area.id === curA && lvl === curL;
+        if (isCur) cur = { area: area.id, lvl, st };
+        const cls = isCur ? 'cur' : isDone ? 'done' : (st.mastered || st.learning) ? '' : 'new';
+        const tag = isCur ? '<span class="pg-tag go">CONTINUE</span>' : isDone ? '<span class="pg-tag done">DONE</span>' : '';
+        tiles += `<button onclick="app.showView('dashboard'); app.selectStudyLevel(${area.id}, ${lvl}); app.scrollToStudySession();" class="pg-lv ${cls}" aria-label="Area ${area.id} level ${lvl}, ${st.mastered} of ${st.total} mastered">
+          <span class="pg-lv-top"><span class="pg-lv-name">Level ${lvl}</span>${tag}</span>
+          ${bar(st.mastered, st.learning, st.total, 'pg-lv-bar')}
+          <span class="pg-lv-num"><b>${st.mastered}</b> / ${st.total}${st.total < 100 ? ` <small>card${st.total === 1 ? '' : 's'}</small>` : ''}</span>
+        </button>`;
       }
       const ps = this.getPsStats(area.id);
       if (ps.total > 0) {
-        html += `
-          <div onclick="app.openProblemSolvingMode(${area.id});" class="panel p-3.5 cursor-pointer border border-amber-500/40 hover:border-amber-400 transition-all space-y-2">
-            <div class="flex justify-between text-xs font-extrabold">
-              <span class="text-amber-300"><svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg> Area-${area.id} Level (PS)</span>
-              <span class="font-mono text-amber-300">${ps.pct.toFixed(0)}%</span>
-            </div>
-            <div class="text-xs font-mono text-slate-400">Problem Solving Only (${ps.mastered}/${ps.total})</div>
-            <div class="w-full h-2 bg-navy-950 rounded-full overflow-hidden">
-              <div class="h-full bg-amber-500 rounded-full" style="width: ${ps.pct}%"></div>
-            </div>
-          </div>
-        `;
+        am += ps.mastered; al += ps.learning; at += ps.total; levels++;
+        if (ps.mastered === ps.total) done++;
+        tiles += `<button onclick="app.openProblemSolvingMode(${area.id});" class="pg-lv ps ${ps.mastered || ps.learning ? '' : 'new'}" aria-label="Area ${area.id} problem solving, ${ps.mastered} of ${ps.total} mastered">
+          <span class="pg-lv-top"><span class="pg-lv-name"><svg class="ic" aria-hidden="true"><use href="#i-calculator"/></svg>Problems</span>${ps.mastered === ps.total ? '<span class="pg-tag done">DONE</span>' : ''}</span>
+          ${bar(ps.mastered, ps.learning, ps.total, 'pg-lv-bar')}
+          <span class="pg-lv-num"><b>${ps.mastered}</b> / ${ps.total}</span>
+        </button>`;
       }
-    }
-    grid.innerHTML = html;
+      M += am; L += al; T += at;
+      return `<section class="panel pg-area" aria-label="Area ${area.id}">
+        <div class="pg-area-hd">
+          <div class="min-w-0"><div class="label-mono">Area ${area.id} · ${n} levels${ps.total ? ' + problems' : ''}</div><h2 class="font-serif !font-normal text-[19px] sm:text-[23px] leading-tight mt-1">${this.escapeHtml(area.name || '')}</h2></div>
+          <div class="pg-pct">${Math.floor(at ? am / at * 100 : 0)}<small>%</small></div>
+          <div class="pg-sub"><span class="font-mono">${fmt(am)}</span> of <span class="font-mono">${fmt(at)}</span> mastered · <span class="font-mono">${fmt(al)}</span> learning</div>
+        </div>
+        ${bar(am, al, at, 'pg-stack thin')}
+        <div class="pg-levels">${tiles}</div>
+      </section>`;
+    }).join('');
+
+    const alive = d.lastHit === this.localDay() || d.lastHit === this.localDay(-1);
+    const streak = alive ? (d.streak || 0) : 0;
+    document.getElementById('pg-stats').innerHTML = `
+      <div class="lb-stat"><b style="color:var(--accent-ink)">${fmt(M)}</b><span>mastered <small class="font-mono">· ${Math.floor(T ? M / T * 100 : 0)}%</small></span></div>
+      <div class="lb-stat"><b style="color:var(--pg-learn)">${fmt(L)}</b><span>learning</span></div>
+      <div class="lb-stat"><b>${done}<small class="text-slate-400 text-[13px]"> / ${levels}</small></b><span>levels complete</span></div>
+      <div class="lb-stat"><b style="color:var(--gold)">${streak}</b><span>day streak · ${d.count} / ${d.goal} today</span></div>`;
+    document.getElementById('pg-all').innerHTML = bar(M, L, T, 'pg-stack');
+    document.getElementById('pg-intro').textContent = `All ${levels} levels across the three areas, ${fmt(T)} questions in all. Tap a level to study it. A card counts as mastered once you get it right on review.`;
+    document.getElementById('pg-next').innerHTML = cur ? `
+      <svg class="ic" style="color:var(--gold)" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+      <span class="min-w-0"><span class="text-slate-400">Pick up where you left off:</span> <b class="font-semibold">Area ${cur.area} · Level ${cur.lvl}</b> <span class="text-slate-400 font-mono text-[13px]">${cur.st.mastered} / ${cur.st.total} mastered</span></span>
+      <button onclick="app.continueStudying()" class="inline-flex items-center justify-center gap-2 px-4 min-h-[42px] rounded-[10px] bg-emerald-600 hover:bg-emerald-700 text-on-accent text-sm font-semibold whitespace-nowrap"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Continue</button>` : '';
+    grid.innerHTML = areasHtml;
   }
 
   // ==================== GLOBAL CHAT & FEEDBACK / SUGGESTIONS ====================
