@@ -1144,6 +1144,7 @@ class AgriBoardApp {
     }
 
     this.renderGroupCard();
+    this.renderHomePaes();
 
     // Continue button
     $('home-continue-label').textContent = `Area ${d.lastArea || 1} · Level ${d.lastLevel || 1}`;
@@ -2621,13 +2622,79 @@ class AgriBoardApp {
     this.setVaultFilter('status', 'all');
   }
 
+  // Open the PAES Vault, optionally already searched or showing saved standards only
+  openPaes(query = '', savedOnly = false) {
+    this.showView('paes');
+    document.getElementById('paes-search-input').value = query.trim();
+    if (savedOnly !== !!this.paesOn?.saved) this.setPaesFilter('saved'); else this.renderPaes();
+    window.scrollTo({ top: 0 });
+  }
+
+  // Dashboard highlight: same paes.json and device marks as the PAES Vault, no Supabase calls
+  async renderHomePaes() {
+    const box = document.getElementById('home-paes');
+    if (!box) return;
+    const all = await this.loadPaes();
+    if (!all) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    const esc = (s) => this.escapeHtml(s || '');
+    const marks = this.paesMarks();
+    const cur = all.filter(p => !p.old);
+    const asked = cur.filter(p => p.q).sort((a, b) => b.q - a.q);
+    const top = asked.slice(0, 3);
+    // One standard to read per day, skipping ones already marked read
+    const unread = asked.filter(p => !marks.read.has(p.id) && p.url);
+    const pool = unread.length ? unread : asked.filter(p => p.url);
+    const pick = pool[Math.floor(Date.now() / 86400000) % pool.length];
+    const tile = document.getElementById('home-paes-count');
+    if (tile) tile.textContent = `${cur.length.toLocaleString()} standards`;
+
+    box.innerHTML = `
+      <svg class="bg-ic" aria-hidden="true"><use href="#i-scroll-text"/></svg>
+      <div class="relative">
+        <div class="flex items-center gap-2"><span class="label-mono">PAES vault</span><span class="vault-ps">NEW</span></div>
+        <h2 class="font-serif !font-normal text-[24px] sm:text-[30px] leading-tight mt-2.5 mb-1.5">Every PAES, one tap away</h2>
+        <p class="text-[14.5px] text-slate-400 max-w-[46ch]">All agricultural engineering standards from 2000 to 2026, current edition first, with the official PDF. Know which ones the board exam asks, and practice them.</p>
+        <div class="hp-figs">
+          <div><b>${cur.length.toLocaleString()}</b><span>standards</span></div>
+          <div><b class="text-emerald-300">${asked.length}</b><span>in our questions</span></div>
+          ${marks.saved.size ? `<div><b style="color:var(--gold)">${marks.saved.size}</b><span>you've saved</span></div>` : ''}
+        </div>
+        <form class="hp-search" onsubmit="app.openPaes(this.q.value); return false;">
+          <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <input name="q" type="search" placeholder="Find a PAES: 419, thresher…" aria-label="Find a PAES" autocomplete="off" />
+          <button type="submit" class="min-h-[38px] px-3.5 rounded-[9px] bg-emerald-600 hover:bg-emerald-700 text-on-accent text-[13.5px] font-semibold">Search</button>
+        </form>
+        <div class="hp-links">
+          <button onclick="app.openPaes()"><svg class="ic" aria-hidden="true"><use href="#i-arrow-right"/></svg>Open PAES Vault</button>
+          ${marks.saved.size ? `<button onclick="app.openPaes('', true)"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg>Your saved standards</button>` : ''}
+        </div>
+      </div>
+      <div class="relative min-w-0">
+        <div class="hp-top">
+          <div class="flex items-baseline justify-between gap-2.5"><span class="label-mono">Most asked in our questions</span><span class="font-mono text-xs text-slate-400">questions</span></div>
+          ${top.map((p, i) => `
+            <div class="hp-row">
+              <span class="hp-rank">${i + 1}</span>
+              <div class="min-w-0"><div class="font-mono text-xs text-slate-400">${esc(p.code)}</div><div class="font-serif text-[16px] leading-snug">${esc(p.t)}</div><div class="hp-bar"><i style="width:${Math.round(p.q / top[0].q * 100)}%; animation-delay:${i * 0.1}s"></i></div></div>
+              <button onclick="app.paesPractice('${p.id}')" aria-label="Practice ${p.q} questions on ${esc(p.code)}" class="min-h-[36px] px-3 rounded-[10px] border border-rule bg-surface hover:border-emerald-500 text-[13px] font-semibold whitespace-nowrap">${p.q}<span class="hp-prac"> · Practice</span></button>
+            </div>`).join('')}
+        </div>
+        ${pick ? `<div class="hp-today">
+          <svg class="ic" style="color:var(--gold)" aria-hidden="true"><use href="#i-file-text"/></svg>
+          <span class="min-w-0"><span class="text-slate-400">Read today:</span> <b class="font-semibold">${esc(pick.code.replace(/^PNS\/(BAFS\/)?/, ''))} ${esc(pick.t)}</b> <span class="text-slate-400">· ${pick.q} question${pick.q === 1 ? '' : 's'}</span></span>
+          <a href="${esc(pick.url)}" target="_blank" rel="noopener" class="min-h-[34px] px-3 rounded-[10px] border border-rule bg-surface hover:border-emerald-500 text-[13px] font-semibold inline-flex items-center whitespace-nowrap">Open PDF</a>
+        </div>` : ''}
+      </div>`;
+  }
+
   // ==================== PAES VAULT ====================
   // paes.json is built from the AMTEC (2000-2017) and BAFS (2017-2026) lists by site-tools/build_paes.py.
   // Saves and read marks stay on this device (localStorage), so this page makes no Supabase calls.
   async loadPaes() {
     if (this.paes) return this.paes;
     try {
-      const res = await fetch('./paes.json?v=20261206b');
+      const res = await fetch('./paes.json?v=20261206c');
       if (!res.ok) throw new Error(res.status);
       this.paes = await res.json();
     } catch (e) {
@@ -2657,6 +2724,7 @@ class AgriBoardApp {
     if (m[kind].has(id)) m[kind].delete(id); else m[kind].add(id);
     try { localStorage.setItem('bayaw-paes', JSON.stringify({ saved: [...m.saved], read: [...m.read] })); } catch (e) { /* private mode: marks last until reload */ }
     this.renderPaes(true);
+    this.renderHomePaes();
   }
 
   setPaesFilter(key, value) {
