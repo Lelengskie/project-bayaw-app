@@ -105,14 +105,17 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
         pvpWins: a.pvp_wins || 0,
         pvpLosses: a.pvp_losses || 0,
         bestTimeSec: a.best_time_sec ?? null,
+        lastActiveAt: a.last_active_at || 0,
         updatedAt: a.updated_at || 0
       }));
 
-      const progression = [...records]
+      // Owners stay off the public boards so reviewees compete among themselves
+      const players = records.filter(r => !r.isOwner);
+      const progression = [...players]
         .sort((a, b) => (b.totalMastered - a.totalMastered) || (b.xp - a.xp))
         .slice(0, 100);
 
-      const pvp = [...records]
+      const pvp = [...players]
         .filter(r => (r.pvpWins || 0) > 0 || (r.pvpLosses || 0) > 0 || r.rp !== 1200 || r.bestTimeSec !== null)
         .sort((a, b) => ((b.pvpWins || 0) - (a.pvpWins || 0)) || ((a.pvpLosses || 0) - (b.pvpLosses || 0)) || (b.rp - a.rp))
         .slice(0, 100);
@@ -121,7 +124,7 @@ window.bayawApi = async function(method, body = null, adminPasscode = '') {
       const promoActive = !!(promoVal.enabled && promoVal.endsAt > Date.now());
 
       return okRes({
-        totalReviewees: records.length,
+        totalReviewees: players.length,
         onlineCount,
         progression,
         pvp,

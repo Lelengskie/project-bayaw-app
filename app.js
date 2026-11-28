@@ -2285,6 +2285,16 @@ class AgriBoardApp {
     return '';
   }
 
+  // Uses last_active_at the leaderboard already downloads (heartbeat every 90s), so no extra Supabase calls
+  renderLastSeen(p) {
+    const t = p.isUser ? Date.now() : p.lastActiveAt;
+    if (!t) return '';
+    const min = Math.floor((Date.now() - t) / 60000);
+    if (min < 3) return `<span class="basis-full text-[11px] font-normal text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Online</span>`;
+    const ago = min < 60 ? `${min}m` : min < 1440 ? `${Math.floor(min / 60)}h` : `${Math.floor(min / 1440)}d`;
+    return `<span class="basis-full text-[11px] font-normal text-slate-500">${ago} ago</span>`;
+  }
+
   renderLeaderboards() {
     const s1 = this.getAreaStats(1);
     const s2 = this.getAreaStats(2);
@@ -2322,7 +2332,7 @@ class AgriBoardApp {
       })).sort((a, b) => ((b.pvpWins || 0) - (a.pvpWins || 0)) || ((a.pvpLosses || 0) - (b.pvpLosses || 0)) || ((b.rp || 1200) - (a.rp || 1200)));
       const badge = document.getElementById('lb-real-badge');
       if (badge) badge.textContent = `${this.liveLeaderboard.totalReviewees} Real Reviewee${this.liveLeaderboard.totalReviewees === 1 ? '' : 's'}`;
-    } else {
+    } else if (!this.user.isOwner) {
       progPlayers = [selfEntry];
       if (selfEntry.pvpWins > 0 || selfEntry.pvpLosses > 0 || selfEntry.rp !== 1200 || selfEntry.bestTimeSec !== null) {
         pvpPlayers = [selfEntry];
@@ -2337,6 +2347,7 @@ class AgriBoardApp {
             <div class="flex flex-wrap items-center gap-0.5">
               <span class="truncate max-w-[100px]">${this.escapeHtml(p.name)}</span>
               ${this.renderTitleBadge(p)}
+              ${this.renderLastSeen(p)}
             </div>
           </td>
           <td class="py-1.5 text-center font-mono text-sky-300">${p.a1Levels ?? 0}</td>
@@ -2359,6 +2370,7 @@ class AgriBoardApp {
               <div class="flex flex-wrap items-center gap-0.5">
                 <span class="truncate max-w-[85px]">${this.escapeHtml(p.name)}</span>
                 ${this.renderTitleBadge(p)}
+                ${this.renderLastSeen(p)}
               </div>
             </td>
             <td class="py-1.5 text-center font-mono text-xs whitespace-nowrap">
