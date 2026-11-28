@@ -2502,44 +2502,118 @@ class AgriBoardApp {
     el.innerHTML = html;
   }
 
-  // ==================== QUESTION VAULT & ALL LEVELS PROGRESS ====================
-  renderVault() {
-    const q = (document.getElementById('vault-search-input').value || '').toLowerCase().trim();
-    const areaF = document.getElementById('vault-filter-area').value;
-    const catF = document.getElementById('vault-filter-cat').value;
+  // ==================== QUESTION VAULT ====================
+  // Status comes from progress already on this device, so filters cost no Supabase calls.
+  vaultStatus(it) {
+    const rec = this.user.srs[it.id];
+    if (!rec) return 'new';
+    if (rec.status === 'mastered') return 'mastered';
+    if ((rec.misses || 0) > 0) return 'missed';
+    return rec.status === 'learning' ? 'learning' : 'new';
+  }
 
-    const filtered = this.allItemsFlat.filter(it => {
+  setVaultFilter(key, value) {
+    if (key === 'showAll') this.vaultShowAll = !this.vaultShowAll;
+    else if (key === 'area') this.vaultArea = value;
+    else this.vaultStatusF = value;
+    document.querySelectorAll('[data-vault-area]').forEach(b => b.classList.toggle('on', b.dataset.vaultArea === (this.vaultArea || 'all')));
+    document.querySelectorAll('[data-vault-status]').forEach(b => b.classList.toggle('on', b.dataset.vaultStatus === (this.vaultStatusF || 'all')));
+    document.getElementById('vault-show-all')?.setAttribute('aria-pressed', !!this.vaultShowAll);
+    this.renderVault(key === 'showAll');
+  }
+
+  vaultTry(btn) {
+    document.getElementById('vault-search-input').value = btn.textContent;
+    this.renderVault();
+  }
+
+  vaultToggle(id) {
+    this.vaultOpen = this.vaultOpen || new Set();
+    if (this.vaultOpen.has(id)) this.vaultOpen.delete(id); else this.vaultOpen.add(id);
+    this.renderVault(true);
+  }
+
+  vaultMore() {
+    this.vaultLimit = (this.vaultLimit || 40) + 40;
+    this.renderVault(true);
+  }
+
+  // keepPlace: re-render the same results (reveal, show more) without resetting the page size
+  renderVault(keepPlace = false) {
+    const raw = (document.getElementById('vault-search-input').value || '').trim();
+    const q = raw.toLowerCase();
+    const areaF = this.vaultArea || 'all', statusF = this.vaultStatusF || 'all';
+    const catF = document.getElementById('vault-filter-cat').value;
+    if (!keepPlace) this.vaultLimit = 40;
+    this.vaultOpen = this.vaultOpen || new Set();
+    document.getElementById('vault-clear')?.classList.toggle('hidden', !raw);
+
+    const all = this.allItemsFlat;
+    document.getElementById('vault-stat-total').textContent = all.length.toLocaleString();
+    document.getElementById('vault-stat-ps').textContent = all.filter(it => it.category === 'problem_solving').length.toLocaleString();
+    document.getElementById('vault-stat-mastered').textContent = all.filter(it => this.user.srs[it.id]?.status === 'mastered').length.toLocaleString();
+
+    const filtered = all.filter(it => {
       if (areaF !== 'all' && String(it.area) !== areaF) return false;
       if (catF !== 'all' && it.category !== catF) return false;
-      if (q) {
-        return `${it.id} ${it.question} ${it.answer} ${it.subtopic} ${it.rationale}`.toLowerCase().includes(q);
+      if (statusF !== 'all') {
+        const st = this.vaultStatus(it);
+        if (statusF === 'missed' ? !this.isMissed(this.user.srs[it.id]) : st !== statusF) return false;
       }
-      return true;
+      return !q || `${it.id} ${it.question} ${it.answer} ${it.subtopic} ${it.rationale}`.toLowerCase().includes(q);
     });
+    const limit = this.vaultLimit || 40;
+    const slice = filtered.slice(0, limit);
+    document.getElementById('vault-result-count').textContent = `${filtered.length.toLocaleString()} question${filtered.length === 1 ? '' : 's'}${raw ? ` matching "${raw}"` : ''}`;
 
-    const slice = filtered.slice(0, 60);
-    document.getElementById('vault-result-count').textContent = `Showing ${slice.length} of ${filtered.length.toLocaleString()} items`;
-    document.getElementById('vault-list').innerHTML = slice.map(it => `
-      <div class="panel p-4 space-y-1.5">
-        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="font-mono font-bold text-sky-400">#${it.id}</span>
-            <span class="px-2 py-0.5 rounded bg-navy-950 border border-blue-900/60 text-slate-300 font-semibold">Area ${it.area} • ${it.levelLabel}</span>
-            <span class="text-slate-400">${this.escapeHtml(it.subtopic)}</span>
-          </div>
-          <button onclick="app.jumpFromVault(${it.area}, ${it.level}, '${it.id}')" class="text-sky-400 hover:underline font-bold">Study This Card →</button>
+    const esc = (s) => this.escapeHtml(s || '');
+    // Escape first, then mark matches (the search text is escaped the same way so it still lines up)
+    const re = q ? new RegExp(`(${esc(raw).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig') : null;
+    const hl = (s) => re ? esc(s).replace(re, '<mark class="vault-mark">$1</mark>') : esc(s);
+    const tint = { 1: 'inkblue-400', 2: 'green-400', 3: 'plum-400' };
+    const stLabel = { new: ['New', 'var(--line-strong)'], learning: ['Learning', 'var(--gold)'], mastered: ['Mastered', 'var(--accent)'], missed: ['Missed', 'rgb(var(--c-rust-400))'] };
+    const btn = 'min-h-[40px] px-3.5 rounded-[10px] border border-rule text-[13.5px] font-semibold inline-flex items-center justify-center gap-2';
+
+    document.getElementById('vault-list').innerHTML = slice.map((it, i) => {
+      const shown = this.vaultShowAll || this.vaultOpen.has(it.id);
+      const [stT, stC] = stLabel[this.vaultStatus(it)];
+      const level = it.category === 'problem_solving' ? 'Problem solving' : String(it.levelLabel || '').replace(/\s*\(.*\)$/, '');
+      return `<article class="panel vault-card" style="animation-delay:${Math.min(i, 12) * 25}ms">
+        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-slate-400">
+          <span class="font-mono text-white">#${hl(it.id)}</span>
+          <span class="vault-atag" style="color:rgb(var(--c-${tint[it.area]}))">AREA ${it.area}</span>
+          ${it.category === 'problem_solving' ? '<span class="vault-ps">PROBLEM SOLVING</span>' : ''}
+          <span>${esc(level)}${it.subtopic ? ' · ' + hl(it.subtopic) : ''}</span>
+          <span class="ml-auto inline-flex items-center gap-1.5"><span class="vault-dot" style="background:${stC}"></span>${stT}</span>
         </div>
-        <div class="text-sm font-bold text-white">${this.escapeHtml(it.question)}</div>
-        ${it.images?.length ? `<div class="flex gap-2 pt-1">${it.images.map(s => `<img src="${this.fixAssetPath(s)}" loading="lazy" decoding="async" alt="Question figure" class="max-h-36 rounded bg-white p-1"/>`).join('')}</div>` : ''}
-        <div class="text-xs font-bold text-emerald-400">Answer: ${this.escapeHtml(it.answer)}</div>
-        ${it.rationale ? `<div class="text-xs text-slate-400 whitespace-pre-line">${this.escapeHtml(it.rationale)}</div>` : ''}
-      </div>
-    `).join('') || `
-      <div class="panel p-8 text-center space-y-2">
-        <svg class="ic text-slate-500" style="width:28px;height:28px" aria-hidden="true"><use href="#i-search"/></svg>
-        <div class="text-sm font-bold text-white">No questions match${q ? ` “${this.escapeHtml(q)}”` : ''}</div>
-        <div class="text-xs text-slate-400">Try a shorter keyword, a PAES number, or set the filters back to All.</div>
+        <p class="font-serif text-[17px] sm:text-[18px] leading-[1.4] text-white mt-2.5 mb-3 whitespace-pre-line">${hl(it.question)}</p>
+        ${it.images?.length ? (shown
+          ? `<div class="flex flex-wrap gap-2 mb-3">${it.images.map(src => `<img src="${this.fixAssetPath(src)}" loading="lazy" decoding="async" alt="Figure for ${esc(it.id)}" class="max-h-48 rounded-lg bg-white p-1.5 border border-rule"/>`).join('')}</div>`
+          : '<div class="vault-fig">Figure included · shows with the answer</div>') : ''}
+        <div class="vault-ans">
+          ${shown
+            ? `<span class="vault-answer"><small>ANSWER</small>${hl(it.answer)}</span>${this.vaultShowAll ? '' : `<button onclick="app.vaultToggle('${esc(it.id)}')" class="${btn} !min-h-[34px] bg-paper">Hide</button>`}`
+            : `<button onclick="app.vaultToggle('${esc(it.id)}')" class="${btn} bg-paper hover:border-emerald-500"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Show answer</button>`}
+          <button onclick="app.jumpFromVault(${it.area}, ${it.level}, '${esc(it.id)}')" class="${btn} vault-study hover:border-emerald-500"><svg class="ic" aria-hidden="true"><use href="#i-book-open"/></svg> Study this card</button>
+          ${shown && it.rationale ? `<div class="vault-why">${hl(it.rationale)}</div>` : ''}
+        </div>
+      </article>`;
+    }).join('') + (filtered.length > limit
+      ? `<div class="grid place-items-center gap-1.5 pt-2 text-[12.5px] text-slate-400"><button onclick="app.vaultMore()" class="${btn} bg-surface hover:border-emerald-500">Show 40 more</button><span>Showing ${slice.length.toLocaleString()} of ${filtered.length.toLocaleString()}</span></div>`
+      : '') || `
+      <div class="panel py-9 px-4 text-center">
+        <svg class="ic !w-7 !h-7 text-slate-400" aria-hidden="true"><use href="#i-search"/></svg>
+        <h2 class="font-serif !font-normal text-[22px] mt-2">No questions match${raw ? ` "${esc(raw)}"` : ''}</h2>
+        <p class="text-sm text-slate-400 mt-1 mb-4">Try a shorter keyword or a PAES number, or reset the filters.</p>
+        <button onclick="app.resetVault()" class="${btn} bg-surface hover:border-emerald-500">Reset filters</button>
       </div>`;
+  }
+
+  resetVault() {
+    document.getElementById('vault-search-input').value = '';
+    document.getElementById('vault-filter-cat').value = 'all';
+    this.vaultArea = 'all';
+    this.setVaultFilter('status', 'all');
   }
 
   jumpFromVault(areaId, levelNum, itemId) {
